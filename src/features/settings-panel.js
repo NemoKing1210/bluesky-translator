@@ -28,7 +28,6 @@ const ROOT_ID = 'bst-settings-root';
 const SETTINGS_TABS = [
   { id: 'general', labelKey: 'sectionGeneral' },
   { id: 'providers', labelKey: 'sectionProviders' },
-  { id: 'translation', labelKey: 'sectionTranslation' },
   { id: 'cache', labelKey: 'sectionCache' },
   { id: 'debug', labelKey: 'sectionDebug' },
   { id: 'about', labelKey: 'sectionAbout' },
@@ -243,11 +242,11 @@ function syncProviderFields(dialog, providerId) {
 }
 
 function tabBadgeHtml(id) {
+  if (id === 'general') {
+    return `<span class="bst-settings__badge" data-bst-tab-badge="general">${escapeHtml(translationBadgeLabel(settings.targetLang))}</span>`;
+  }
   if (id === 'providers') {
     return `<span class="bst-settings__badge" data-bst-tab-badge="providers">${escapeHtml(providerBadgeLabel(settings.provider))}</span>`;
-  }
-  if (id === 'translation') {
-    return `<span class="bst-settings__badge" data-bst-tab-badge="translation">${escapeHtml(translationBadgeLabel(settings.targetLang))}</span>`;
   }
   if (id === 'cache') {
     const stats = getCacheUsageStats();
@@ -283,8 +282,8 @@ function syncTabBadges(dialog, draft = {}) {
   }
 
   const targetLang = draft.targetLang ?? settings.targetLang;
-  const trBadge = dialog.querySelector('[data-bst-tab-badge="translation"]');
-  if (trBadge) trBadge.textContent = translationBadgeLabel(targetLang);
+  const generalBadge = dialog.querySelector('[data-bst-tab-badge="general"]');
+  if (generalBadge) generalBadge.textContent = translationBadgeLabel(targetLang);
 
   const prevHours = settings.cacheHours;
   if (draft.cacheHours != null && Number.isFinite(draft.cacheHours)) {
@@ -552,18 +551,6 @@ export function openSettings() {
               <span>${escapeHtml(t.settingsUiLocale)}</span>
               <select name="uiLocale">${localeOptions(settings.uiLocale)}</select>
             </label>
-          </div>
-          <div ${panelAttrs('providers', activeTab)}>
-            <label class="bst-field">
-              <span>${escapeHtml(t.settingsProvider)}</span>
-              <select name="provider">${providerOptions(settings.provider)}</select>
-            </label>
-            <p class="bst-hint">${escapeHtml(t.settingsProviderHint)}</p>
-            <div class="bst-provider-panels" data-bst-provider-panels>
-              ${buildProviderFieldsHtml(settings.provider)}
-            </div>
-          </div>
-          <div ${panelAttrs('translation', activeTab)}>
             <label class="bst-field">
               <span>${escapeHtml(t.settingsTranslateMode)}</span>
               <select name="translateMode">
@@ -666,6 +653,16 @@ export function openSettings() {
               <input name="autoDetectSkipSameLang" type="checkbox"${settings.autoDetectSkipSameLang ? ' checked' : ''} />
               <span>${escapeHtml(t.settingsSkipSame)}</span>
             </label>
+          </div>
+          <div ${panelAttrs('providers', activeTab)}>
+            <label class="bst-field">
+              <span>${escapeHtml(t.settingsProvider)}</span>
+              <select name="provider">${providerOptions(settings.provider)}</select>
+            </label>
+            <p class="bst-hint">${escapeHtml(t.settingsProviderHint)}</p>
+            <div class="bst-provider-panels" data-bst-provider-panels>
+              ${buildProviderFieldsHtml(settings.provider)}
+            </div>
           </div>
           <div ${panelAttrs('cache', activeTab)}>
             ${buildCacheMeterHtml()}
