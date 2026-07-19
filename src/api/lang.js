@@ -30,10 +30,10 @@ export function toLibreLang(code) {
   return c.split('-')[0];
 }
 
-export function languageDisplayName(code) {
+export function languageDisplayName(code, uiLocale = 'en') {
   try {
-    return new Intl.DisplayNames(['en'], { type: 'language' }).of(
-      String(code || 'en').split('-')[0]
+    return new Intl.DisplayNames([uiLocale, 'en'], { type: 'language' }).of(
+      String(code || 'en').replace(/_/g, '-').split('-')[0]
     );
   } catch (_) {
     return code;

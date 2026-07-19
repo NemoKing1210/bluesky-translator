@@ -217,11 +217,58 @@ button.bst-nav-item svg {
 
 .bst-text--hover-peek {
   cursor: help;
+  position: relative;
 }
 
+.bst-text--blur-ready {
+  position: relative;
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    filter 0.55s cubic-bezier(0.33, 1, 0.68, 1),
+    opacity 0.55s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.bst-text--translating {
+  filter: blur(2.25px);
+  opacity: 0.72;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Expand line-clamped quote embeds so original peek isn't truncated. */
 .bst-text--peeking {
+  position: relative;
   outline: 1px dashed rgba(16, 131, 254, 0.35);
   outline-offset: 2px;
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  max-height: none !important;
+  overflow: visible !important;
+  -webkit-box-orient: initial !important;
+}
+
+/* Fixed portal — quote cards use overflow/line-clamp and clip in-flow badges. */
+.bst-peek-badge {
+  position: fixed;
+  z-index: 2147483000;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 131, 254, 0.35);
+  background: rgba(16, 131, 254, 0.14);
+  color: #1083fe;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(16, 131, 254, 0.12);
 }
 
 .bst-split {

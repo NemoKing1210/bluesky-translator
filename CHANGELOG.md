@@ -5,6 +5,53 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-07-19
+
+### Changed
+
+- Skip same-language posts silently (no “Already in target language” panel)
+- Do not show Translate / run translation when the post is only links or hashtags
+
+## [1.0.0] - 2026-07-19
+
+First stable release. Core translation workflow is in place for day-to-day use on bsky.app.
+
+### Added
+
+- In-place post translation (button or auto) for feed posts and quoted embeds
+- Display modes: separate panel, or replace original (button / hover peek / split)
+- Hover peek: blur while translating, source-language badge, full original on nested posts
+- Multiple providers: Google, DeepL, Microsoft, OpenAI, Yandex, LibreTranslate
+- Translation cache, stats, account blocklist, language allow/block lists
+- Settings UI (General / Providers / Cache / Debug / About) with light and dark theme support
+- UI in 8 languages; toasts and chrome adapt to Bluesky theme
+
+## [0.1.34] - 2026-07-19
+
+### Fixed
+
+- Hover peek (lang badge + full original) works on nested/quoted posts (line-clamp no longer clips)
+
+## [0.1.33] - 2026-07-19
+
+### Changed
+
+- Peek language badge: higher z-index, right-aligned, accent color
+
+## [0.1.32] - 2026-07-19
+
+### Changed
+
+- Hover peek language badge sits absolutely above the post text
+- Softer, longer blur transition while translating
+
+## [0.1.31] - 2026-07-19
+
+### Changed
+
+- Hover reveal: blur original text while translating (no loader button)
+- Hover reveal: show source-language badge above original on peek
+
 ## [0.1.30] - 2026-07-19
 
 ### Changed

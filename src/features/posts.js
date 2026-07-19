@@ -1,3 +1,4 @@
+import { languageDisplayName } from '../api/lang.js';
 import { translateText } from '../api/translate.js';
 import {
   AUTO_TRANSLATE_MAX_INFLIGHT,
@@ -5,12 +6,14 @@ import {
   POST_ATTR,
   POST_TEXT_SELECTORS,
   RESULT_ATTR,
+  TARGET_LANGUAGES,
   TOOLBAR_ATTR,
 } from '../constants.js';
 import { fmt, resolveTargetLang } from '../i18n/index.js';
 import { locale, settings, t } from '../state.js';
 import { escapeHtml } from '../utils/html.js';
-import { extractLinkedText, restoreLinkedHtml } from '../utils/linked-text.js';
+import { extractLinkedText, hasTranslatablePlainText, restoreLinkedHtml } from '../utils/linked-text.js';
+import { normalizeLangCode } from '../utils/lists.js';
 import { ICONS } from '../ui/icons.js';
 import { isAutoTranslateAllowedForHandle } from './allowlist.js';
 import { resolvePostAuthorHandle } from './author.js';
@@ -32,6 +35,7 @@ const AUTO_DONE_ATTR = 'data-bst-auto-done';
 const AUTO_QUEUED_ATTR = 'data-bst-auto-queued';
 const ORIGINAL_HTML_ATTR = 'data-bst-original-html';
 const TRANSLATED_HTML_ATTR = 'data-bst-translated-html';
+const SOURCE_LANG_ATTR = 'data-bst-source-lang';
 const PEEK_BOUND_ATTR = 'data-bst-peek-bound';
 
 /** @type {IntersectionObserver | null} */
@@ -68,9 +72,16 @@ function syncToolbarVisibility(postEl) {
   bar.classList.toggle('bst-toolbar--quiet', hideBar);
 }
 
+function clearButtonLoading(btn) {
+  btn.classList.remove('is-loading');
+  btn.disabled = false;
+  btn.removeAttribute('aria-busy');
+}
+
 function applyShownButton(btn, postEl) {
   btn.dataset.bstState = 'shown';
   if (shouldHideShownReplaceButton()) {
+    clearButtonLoading(btn);
     btn.hidden = true;
     syncToolbarVisibility(postEl);
     return;
@@ -164,34 +175,159 @@ function clonePostContent(el) {
   return clone;
 }
 
-function extractPostText(el) {
-  return extractLinkedText(clonePostContent(el)).text;
-}
-
 /** Plain text for translate APIs, with anchors turned into stable tokens. */
 function extractPostForTranslate(el) {
   return extractLinkedText(clonePostContent(el));
 }
 
+function postHasTranslatableContent(el) {
+  const { text } = extractPostForTranslate(el);
+  return hasTranslatablePlainText(text);
+}
+
+function teardownPostUi(el) {
+  clearDisplay(el);
+  getToolbar(el)?.remove();
+  el.removeAttribute(POST_ATTR);
+  el.removeAttribute(OBSERVED_ATTR);
+  el.removeAttribute(AUTO_DONE_ATTR);
+  el.removeAttribute(AUTO_QUEUED_ATTR);
+  try {
+    visibilityObserver?.unobserve(el);
+  } catch {
+    /* ignore */
+  }
+}
+
 function restoreOriginalText(postEl) {
+  hideFloatingPeekBadge(postEl);
   const stored = postEl.getAttribute(ORIGINAL_HTML_ATTR);
   if (stored == null) return;
   postEl.innerHTML = stored;
   postEl.removeAttribute(ORIGINAL_HTML_ATTR);
   postEl.removeAttribute(TRANSLATED_HTML_ATTR);
+  postEl.removeAttribute(SOURCE_LANG_ATTR);
   postEl.classList.remove(
     'bst-text--translated',
     'bst-text--split',
     'bst-text--peeking',
-    'bst-text--hover-peek'
+    'bst-text--hover-peek',
+    'bst-text--translating',
+    'bst-text--blur-ready'
   );
+}
+
+function resolveSourceLangRow(code) {
+  const c = normalizeLangCode(code);
+  if (!c) return null;
+  return (
+    TARGET_LANGUAGES.find((lang) => normalizeLangCode(lang.code) === c) ||
+    TARGET_LANGUAGES.find((lang) => c.startsWith(`${normalizeLangCode(lang.code)}-`)) ||
+    (c.startsWith('zh')
+      ? TARGET_LANGUAGES.find((lang) => lang.code === 'zh-CN')
+      : null) ||
+    null
+  );
+}
+
+function formatPeekLangLabel(code) {
+  const row = resolveSourceLangRow(code);
+  if (row) return `${row.flag} ${row.code}`;
+  const name = languageDisplayName(code, locale);
+  if (name) return name;
+  const normalized = normalizeLangCode(code);
+  return normalized ? normalized.toUpperCase() : '';
+}
+
+/** @type {WeakMap<HTMLElement, { badge: HTMLElement, onMove: () => void }>} */
+const peekUiByPost = new WeakMap();
+
+function syncFloatingPeekBadge(postEl) {
+  const ui = peekUiByPost.get(postEl);
+  if (!ui) return;
+  const rect = postEl.getBoundingClientRect();
+  if (rect.width <= 0 && rect.height <= 0) {
+    ui.badge.hidden = true;
+    return;
+  }
+  ui.badge.hidden = false;
+  ui.badge.style.top = `${Math.max(4, rect.top - 6)}px`;
+  ui.badge.style.left = `${rect.right}px`;
+  ui.badge.style.transform = 'translate(-100%, -100%)';
+}
+
+function hideFloatingPeekBadge(postEl) {
+  const ui = peekUiByPost.get(postEl);
+  if (!ui) return;
+  window.removeEventListener('scroll', ui.onMove, true);
+  window.removeEventListener('resize', ui.onMove);
+  ui.badge.remove();
+  peekUiByPost.delete(postEl);
+}
+
+function showFloatingPeekBadge(postEl, code) {
+  hideFloatingPeekBadge(postEl);
+  const label = formatPeekLangLabel(code);
+  if (!label) return;
+
+  const badge = document.createElement('div');
+  badge.className = 'bst-peek-badge';
+  badge.textContent = label;
+  badge.title = fmt(t.detectedLang, { lang: label });
+  badge.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(badge);
+
+  const onMove = () => syncFloatingPeekBadge(postEl);
+  peekUiByPost.set(postEl, { badge, onMove });
+  syncFloatingPeekBadge(postEl);
+  window.addEventListener('scroll', onMove, true);
+  window.addEventListener('resize', onMove);
+}
+
+function setTranslatingBlur(postEl, on) {
+  if (on) {
+    postEl.setAttribute('aria-busy', 'true');
+    postEl.classList.add('bst-text--blur-ready');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!postEl.isConnected) return;
+        if (postEl.getAttribute('aria-busy') !== 'true') return;
+        postEl.classList.add('bst-text--translating');
+      });
+    });
+    return;
+  }
+  postEl.classList.remove('bst-text--translating', 'bst-text--blur-ready');
+  postEl.removeAttribute('aria-busy');
+}
+
+function beginTranslateUi(postEl, btn) {
+  if (shouldHideShownReplaceButton()) {
+    setTranslatingBlur(postEl, true);
+    btn.hidden = true;
+    btn.classList.add('is-loading');
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    syncToolbarVisibility(postEl);
+    return;
+  }
+  btn.hidden = false;
+  syncToolbarVisibility(postEl);
+  setButtonLabel(btn, t.translating, { loading: true });
 }
 
 function paintTranslatedBody(postEl, translatedHtml) {
   const reveal = replaceRevealMode();
   const original = postEl.getAttribute(ORIGINAL_HTML_ATTR) || '';
   postEl.setAttribute(TRANSLATED_HTML_ATTR, translatedHtml);
-  postEl.classList.remove('bst-text--peeking', 'bst-text--split', 'bst-text--hover-peek');
+  postEl.classList.remove(
+    'bst-text--peeking',
+    'bst-text--split',
+    'bst-text--hover-peek',
+    'bst-text--translating',
+    'bst-text--blur-ready'
+  );
+  postEl.removeAttribute('aria-busy');
 
   if (reveal === 'split') {
     postEl.innerHTML =
@@ -217,10 +353,13 @@ function paintTranslatedBody(postEl, translatedHtml) {
   }
 }
 
-function applyReplacedText(postEl, translated, links = []) {
+function applyReplacedText(postEl, translated, links = [], detected = null) {
   if (!postEl.hasAttribute(ORIGINAL_HTML_ATTR)) {
     postEl.setAttribute(ORIGINAL_HTML_ATTR, postEl.innerHTML);
   }
+  const lang = normalizeLangCode(detected);
+  if (lang) postEl.setAttribute(SOURCE_LANG_ATTR, lang);
+  else postEl.removeAttribute(SOURCE_LANG_ATTR);
   paintTranslatedBody(postEl, restoreLinkedHtml(translated, links));
 }
 
@@ -232,14 +371,18 @@ function bindReplaceHover(postEl) {
     if (!isReplaceMode() || replaceRevealMode() !== 'hover') return;
     if (!postEl.classList.contains('bst-text--translated')) return;
     if (postEl.classList.contains('bst-text--split')) return;
+    if (postEl.classList.contains('bst-text--translating')) return;
     const original = postEl.getAttribute(ORIGINAL_HTML_ATTR);
     if (original == null) return;
     postEl.innerHTML = original;
     postEl.classList.add('bst-text--peeking');
+    const lang = postEl.getAttribute(SOURCE_LANG_ATTR);
+    if (lang) showFloatingPeekBadge(postEl, lang);
   });
 
   postEl.addEventListener('mouseleave', () => {
     if (!postEl.classList.contains('bst-text--peeking')) return;
+    hideFloatingPeekBadge(postEl);
     const translated = postEl.getAttribute(TRANSLATED_HTML_ATTR);
     if (translated == null) {
       postEl.classList.remove('bst-text--peeking');
@@ -382,7 +525,12 @@ function showResult(postEl, payload) {
 
   if (useReplace) {
     hideResult(postEl, { remove: true });
-    applyReplacedText(postEl, payload.translated, payload.links || []);
+    applyReplacedText(
+      postEl,
+      payload.translated,
+      payload.links || [],
+      payload.detected
+    );
     return null;
   }
 
@@ -451,19 +599,19 @@ function setButtonLabel(btn, label, { loading = false } = {}) {
 
 async function runTranslate(postEl, btn) {
   const { text, links } = extractPostForTranslate(postEl);
-  if (!text) {
-    showResult(postEl, { error: t.errEmpty });
+  if (!hasTranslatablePlainText(text)) {
+    setTranslatingBlur(postEl, false);
+    teardownPostUi(postEl);
     return;
   }
 
   const targetLang = resolveTargetLang(settings.targetLang, locale);
   clearDisplay(postEl);
-  btn.hidden = false;
-  syncToolbarVisibility(postEl);
-  setButtonLabel(btn, t.translating, { loading: true });
+  beginTranslateUi(postEl, btn);
 
   try {
     const result = await translateText(text, targetLang);
+    setTranslatingBlur(postEl, false);
     const langSkip = getLanguageSkipReason(result.detectedSourceLang);
     if (langSkip) {
       showResult(postEl, {
@@ -482,16 +630,9 @@ async function runTranslate(postEl, btn) {
       result.detectedSourceLang.toLowerCase() === targetLang.toLowerCase() &&
       result.text.trim() === text.trim()
     ) {
-      showResult(postEl, {
-        translated: t.sameLanguage,
-        detected: result.detectedSourceLang,
-        fromCache: result.fromCache,
-        panelOnly: true,
-      });
-      btn.hidden = false;
-      setButtonLabel(btn, t.btnHide);
-      btn.dataset.bstState = 'shown';
-      syncToolbarVisibility(postEl);
+      // Already in target language — stay quiet, no panel.
+      hideResult(postEl, { remove: true });
+      applyIdleButton(btn, postEl);
     } else {
       showResult(postEl, {
         translated: result.text,
@@ -503,6 +644,7 @@ async function runTranslate(postEl, btn) {
     }
     postEl.setAttribute(AUTO_DONE_ATTR, '1');
   } catch (err) {
+    setTranslatingBlur(postEl, false);
     if (settings.debugMode) {
       console.warn('[Bluesky Translator] translate failed', err);
     }
@@ -604,12 +746,12 @@ function observeForAuto(postEl) {
 function enhancePost(el) {
   const handle = resolvePostAuthorHandle(el);
   if (isAccountBlocked(handle)) {
-    clearDisplay(el);
-    getToolbar(el)?.remove();
-    el.removeAttribute(POST_ATTR);
-    el.removeAttribute(OBSERVED_ATTR);
-    el.removeAttribute(AUTO_DONE_ATTR);
-    el.removeAttribute(AUTO_QUEUED_ATTR);
+    teardownPostUi(el);
+    return;
+  }
+
+  if (!postHasTranslatableContent(el)) {
+    teardownPostUi(el);
     return;
   }
 
@@ -623,9 +765,6 @@ function enhancePost(el) {
     observeForAuto(el);
     return;
   }
-
-  const text = extractPostText(el);
-  if (!text) return;
 
   el.setAttribute(POST_ATTR, '1');
   ensureButton(el);

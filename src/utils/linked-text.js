@@ -75,6 +75,28 @@ export function extractLinkedText(root) {
 }
 
 /**
+ * Text left after removing link placeholders (and whitespace).
+ * Empty ⇒ nothing worth translating (links / hashtags only).
+ * @param {string} text
+ * @returns {string}
+ */
+export function plainTextWithoutLinkTokens(text) {
+  return String(text || '')
+    .replace(TOKEN_RE, '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function hasTranslatablePlainText(text) {
+  return Boolean(plainTextWithoutLinkTokens(text));
+}
+
+/**
  * Turn translated text (with tokens) into safe HTML, restoring original anchors.
  * @param {string} translated
  * @param {LinkedAnchor[]} links
