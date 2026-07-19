@@ -404,6 +404,7 @@ function readForm(form) {
         : DEFAULT_SETTINGS.cacheHours,
     autoDetectSkipSameLang: form.autoDetectSkipSameLang.checked,
     translateMode: form.translateMode?.value === 'auto' ? 'auto' : 'button',
+    displayMode: form.displayMode?.value === 'replace' ? 'replace' : 'panel',
     autoScope: form.autoScope?.value === 'allowlist' ? 'allowlist' : 'all',
     autoAllowlist: readAllowlistFromForm(form),
     showButtonOnPosts: form.showButtonOnPosts.checked,
@@ -492,6 +493,14 @@ export function openSettings() {
               </select>
             </label>
             <p class="bst-hint">${escapeHtml(t.settingsTranslateModeHint)}</p>
+            <label class="bst-field">
+              <span>${escapeHtml(t.settingsDisplayMode)}</span>
+              <select name="displayMode">
+                <option value="panel"${settings.displayMode !== 'replace' ? ' selected' : ''}>${escapeHtml(t.displayModePanel)}</option>
+                <option value="replace"${settings.displayMode === 'replace' ? ' selected' : ''}>${escapeHtml(t.displayModeReplace)}</option>
+              </select>
+            </label>
+            <p class="bst-hint">${escapeHtml(t.settingsDisplayModeHint)}</p>
             <div class="bst-auto-options" data-bst-auto-options${settings.translateMode === 'auto' ? '' : ' hidden'}>
               <label class="bst-field">
                 <span>${escapeHtml(t.settingsAutoScope)}</span>

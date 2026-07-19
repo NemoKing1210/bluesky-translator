@@ -17,6 +17,7 @@ function normalizeSettings(raw) {
   merged.provider = isKnownProvider(merged.provider) ? merged.provider : 'google';
   merged.providerConfig = mergeProviderConfig(base.providerConfig);
   merged.translateMode = merged.translateMode === 'auto' ? 'auto' : 'button';
+  merged.displayMode = merged.displayMode === 'replace' ? 'replace' : 'panel';
   merged.autoScope = merged.autoScope === 'allowlist' ? 'allowlist' : 'all';
   merged.autoAllowlist = normalizeAllowlist(merged.autoAllowlist);
   return merged;

@@ -27,6 +27,7 @@ const QUIET_POINTER_EVENTS = [
 const OBSERVED_ATTR = 'data-bst-observed';
 const AUTO_DONE_ATTR = 'data-bst-auto-done';
 const AUTO_QUEUED_ATTR = 'data-bst-auto-queued';
+const ORIGINAL_HTML_ATTR = 'data-bst-original-html';
 
 /** @type {IntersectionObserver | null} */
 let visibilityObserver = null;
@@ -36,6 +37,10 @@ const autoQueue = [];
 
 function isAutoMode() {
   return settings.translateMode === 'auto';
+}
+
+function isReplaceMode() {
+  return settings.displayMode === 'replace';
 }
 
 function shouldAutoTranslatePost(postEl) {
@@ -99,6 +104,15 @@ function placeToolbar(postEl, bar) {
 }
 
 function extractPostText(el) {
+  const stored = el.getAttribute(ORIGINAL_HTML_ATTR);
+  if (stored != null) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = stored;
+    return String(tmp.innerText || tmp.textContent || '')
+      .replace(/\u00a0/g, ' ')
+      .trim();
+  }
+
   const clone = el.cloneNode(true);
   clone
     .querySelectorAll(`[${TOOLBAR_ATTR}], [${BTN_ATTR}], [${RESULT_ATTR}]`)
@@ -106,6 +120,27 @@ function extractPostText(el) {
   return String(clone.innerText || clone.textContent || '')
     .replace(/\u00a0/g, ' ')
     .trim();
+}
+
+function restoreOriginalText(postEl) {
+  const stored = postEl.getAttribute(ORIGINAL_HTML_ATTR);
+  if (stored == null) return;
+  postEl.innerHTML = stored;
+  postEl.removeAttribute(ORIGINAL_HTML_ATTR);
+  postEl.classList.remove('bst-text--translated');
+}
+
+function applyReplacedText(postEl, translated) {
+  if (!postEl.hasAttribute(ORIGINAL_HTML_ATTR)) {
+    postEl.setAttribute(ORIGINAL_HTML_ATTR, postEl.innerHTML);
+  }
+  postEl.innerHTML = escapeHtml(translated).replace(/\n/g, '<br>');
+  postEl.classList.add('bst-text--translated');
+}
+
+function clearDisplay(postEl) {
+  restoreOriginalText(postEl);
+  hideResult(postEl, { remove: true });
 }
 
 /**
@@ -210,15 +245,28 @@ function buildResultInnerHtml({ translated, detected, fromCache, error }) {
   );
 }
 
-/** Reveal result only when content is ready, with expand animation. */
+/** Reveal translation: separate panel, or replace post text in place. */
 function showResult(postEl, payload) {
+  const useReplace =
+    isReplaceMode() &&
+    !payload.error &&
+    !payload.panelOnly &&
+    payload.translated != null;
+
+  if (useReplace) {
+    hideResult(postEl, { remove: true });
+    applyReplacedText(postEl, payload.translated);
+    return null;
+  }
+
+  // Panel mode (and errors / notices in replace mode).
+  restoreOriginalText(postEl);
   const box = ensureResult(postEl);
   const inner = box.querySelector('.bst-result__inner');
   if (!inner) return box;
 
   inner.innerHTML = buildResultInnerHtml(payload);
   box.classList.remove('is-open', 'is-closing');
-  // Closed state first, then open on next frame so CSS can animate.
   void box.offsetHeight;
   requestAnimationFrame(() => {
     box.classList.add('is-open');
@@ -280,8 +328,7 @@ async function runTranslate(postEl, btn) {
   }
 
   const targetLang = resolveTargetLang(settings.targetLang, locale);
-  // Keep previous result hidden until the new translation is ready.
-  hideResult(postEl, { remove: true });
+  clearDisplay(postEl);
   setButtonLabel(btn, t.translating, { loading: true });
 
   try {
@@ -296,15 +343,18 @@ async function runTranslate(postEl, btn) {
         translated: t.sameLanguage,
         detected: result.detectedSourceLang,
         fromCache: result.fromCache,
+        panelOnly: true,
       });
+      setButtonLabel(btn, t.btnHide);
     } else {
+      const replaced = isReplaceMode();
       showResult(postEl, {
         translated: result.text,
         detected: result.detectedSourceLang,
         fromCache: result.fromCache,
       });
+      setButtonLabel(btn, replaced ? t.btnShowOriginal : t.btnHide);
     }
-    setButtonLabel(btn, t.btnHide);
     btn.dataset.bstState = 'shown';
     postEl.setAttribute(AUTO_DONE_ATTR, '1');
   } catch (err) {
@@ -316,7 +366,6 @@ async function runTranslate(postEl, btn) {
     showResult(postEl, { error: msg });
     setButtonLabel(btn, t.btnTranslate);
     btn.dataset.bstState = '';
-    // Allow another auto attempt only via Retry / manual click.
     postEl.setAttribute(AUTO_DONE_ATTR, '1');
   }
 }
@@ -324,10 +373,9 @@ async function runTranslate(postEl, btn) {
 function onTranslateClick(postEl, btn) {
   if (btn.classList.contains('is-loading')) return;
   if (btn.dataset.bstState === 'shown') {
-    hideResult(postEl, { remove: true });
+    clearDisplay(postEl);
     btn.dataset.bstState = '';
     setButtonLabel(btn, t.btnTranslate);
-    // User hid the result — don’t immediately auto-translate again.
     postEl.setAttribute(AUTO_DONE_ATTR, '1');
     return;
   }
@@ -454,7 +502,7 @@ export function scanPosts() {
   document.querySelectorAll(`[${BTN_ATTR}]`).forEach((btn) => {
     if (btn.classList.contains('is-loading')) return;
     if (btn.dataset.bstState === 'shown') {
-      setButtonLabel(btn, t.btnHide);
+      setButtonLabel(btn, isReplaceMode() ? t.btnShowOriginal : t.btnHide);
     } else {
       setButtonLabel(btn, t.btnTranslate);
     }

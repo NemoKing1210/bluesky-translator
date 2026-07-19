@@ -95,6 +95,8 @@ export const DEFAULT_SETTINGS = {
   targetLang: 'auto',
   /** 'button' = Translate on click; 'auto' = translate when post enters the viewport */
   translateMode: 'button',
+  /** 'panel' = result below post; 'replace' = swap post text in place */
+  displayMode: 'panel',
   /** 'all' = every visible post; 'allowlist' = only listed accounts */
   autoScope: 'all',
   autoAllowlist: [],
