@@ -10,6 +10,7 @@ function normalizeSettings(raw) {
   const merged = { ...DEFAULT_SETTINGS, ...base };
   merged.provider = isKnownProvider(merged.provider) ? merged.provider : 'google';
   merged.providerConfig = mergeProviderConfig(base.providerConfig);
+  merged.translateMode = merged.translateMode === 'auto' ? 'auto' : 'button';
   return merged;
 }
 

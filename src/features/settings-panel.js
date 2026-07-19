@@ -359,13 +359,40 @@ function readForm(form) {
         ? Math.min(cacheHours, CACHE_HOURS_MAX)
         : DEFAULT_SETTINGS.cacheHours,
     autoDetectSkipSameLang: form.autoDetectSkipSameLang.checked,
+    translateMode: form.translateMode?.value === 'auto' ? 'auto' : 'button',
     showButtonOnPosts: form.showButtonOnPosts.checked,
     debugMode: form.debugMode.checked,
   };
 }
 
+function lockPageScroll() {
+  const html = document.documentElement;
+  const body = document.body;
+  if (!body || html.classList.contains('bst-scroll-lock')) return;
+
+  const scrollY = window.scrollY || html.scrollTop || 0;
+  body.dataset.bstScrollY = String(scrollY);
+  html.classList.add('bst-scroll-lock');
+  body.classList.add('bst-scroll-lock');
+  body.style.top = `-${scrollY}px`;
+}
+
+function unlockPageScroll() {
+  const html = document.documentElement;
+  const body = document.body;
+  if (!body || !html.classList.contains('bst-scroll-lock')) return;
+
+  const scrollY = Number(body.dataset.bstScrollY || 0);
+  html.classList.remove('bst-scroll-lock');
+  body.classList.remove('bst-scroll-lock');
+  body.style.top = '';
+  delete body.dataset.bstScrollY;
+  window.scrollTo(0, scrollY);
+}
+
 function closeSettings() {
   document.getElementById(ROOT_ID)?.remove();
+  unlockPageScroll();
 }
 
 export function openSettings() {
@@ -411,6 +438,14 @@ export function openSettings() {
             </div>
           </div>
           <div ${panelAttrs('translation', activeTab)}>
+            <label class="bst-field">
+              <span>${escapeHtml(t.settingsTranslateMode)}</span>
+              <select name="translateMode">
+                <option value="button"${settings.translateMode !== 'auto' ? ' selected' : ''}>${escapeHtml(t.translateModeButton)}</option>
+                <option value="auto"${settings.translateMode === 'auto' ? ' selected' : ''}>${escapeHtml(t.translateModeAuto)}</option>
+              </select>
+            </label>
+            <p class="bst-hint">${escapeHtml(t.settingsTranslateModeHint)}</p>
             <label class="bst-field">
               <span>${escapeHtml(t.settingsTargetLang)}</span>
               <select name="targetLang">${langOptions(settings.targetLang)}</select>
@@ -572,6 +607,7 @@ export function openSettings() {
   );
 
   (document.body || document.documentElement).appendChild(root);
+  lockPageScroll();
   requestAnimationFrame(() => {
     syncTabBadges(dialog);
     syncTabInk(dialog);

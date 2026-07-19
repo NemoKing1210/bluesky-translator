@@ -1,5 +1,6 @@
 import { translateText } from '../api/translate.js';
 import {
+  AUTO_TRANSLATE_MAX_INFLIGHT,
   BTN_ATTR,
   POST_ATTR,
   POST_TEXT_SELECTORS,
@@ -20,6 +21,20 @@ const QUIET_POINTER_EVENTS = [
   'touchstart',
   'touchend',
 ];
+
+const OBSERVED_ATTR = 'data-bst-observed';
+const AUTO_DONE_ATTR = 'data-bst-auto-done';
+const AUTO_QUEUED_ATTR = 'data-bst-auto-queued';
+
+/** @type {IntersectionObserver | null} */
+let visibilityObserver = null;
+let autoInflight = 0;
+/** @type {HTMLElement[]} */
+const autoQueue = [];
+
+function isAutoMode() {
+  return settings.translateMode === 'auto';
+}
 
 function findPostTextRoots(root = document) {
   const seen = new Set();
@@ -112,7 +127,10 @@ function bindToolbar(bar, postEl) {
       const retry = event.target.closest?.('[data-bst-retry]');
       if (retry && bar.contains(retry)) {
         const translateBtn = bar.querySelector(`[${BTN_ATTR}]`);
-        if (translateBtn) runTranslate(postEl, translateBtn);
+        if (translateBtn) {
+          postEl.removeAttribute(AUTO_DONE_ATTR);
+          runTranslate(postEl, translateBtn);
+        }
         return;
       }
 
@@ -280,6 +298,7 @@ async function runTranslate(postEl, btn) {
     }
     setButtonLabel(btn, t.btnHide);
     btn.dataset.bstState = 'shown';
+    postEl.setAttribute(AUTO_DONE_ATTR, '1');
   } catch (err) {
     if (settings.debugMode) {
       console.warn('[Bluesky Translator] translate failed', err);
@@ -289,6 +308,8 @@ async function runTranslate(postEl, btn) {
     showResult(postEl, { error: msg });
     setButtonLabel(btn, t.btnTranslate);
     btn.dataset.bstState = '';
+    // Allow another auto attempt only via Retry / manual click.
+    postEl.setAttribute(AUTO_DONE_ATTR, '1');
   }
 }
 
@@ -298,9 +319,87 @@ function onTranslateClick(postEl, btn) {
     hideResult(postEl, { remove: true });
     btn.dataset.bstState = '';
     setButtonLabel(btn, t.btnTranslate);
+    // User hid the result — don’t immediately auto-translate again.
+    postEl.setAttribute(AUTO_DONE_ATTR, '1');
     return;
   }
+  postEl.removeAttribute(AUTO_DONE_ATTR);
   runTranslate(postEl, btn);
+}
+
+function stopAutoTranslate() {
+  autoQueue.length = 0;
+  autoInflight = 0;
+  if (visibilityObserver) {
+    visibilityObserver.disconnect();
+    visibilityObserver = null;
+  }
+  document.querySelectorAll(`[${OBSERVED_ATTR}]`).forEach((el) => {
+    el.removeAttribute(OBSERVED_ATTR);
+  });
+}
+
+function pumpAutoQueue() {
+  while (autoInflight < AUTO_TRANSLATE_MAX_INFLIGHT && autoQueue.length) {
+    const postEl = autoQueue.shift();
+    if (!postEl || !document.contains(postEl)) continue;
+    postEl.removeAttribute(AUTO_QUEUED_ATTR);
+    if (!isAutoMode() || !settings.showButtonOnPosts) continue;
+    if (postEl.getAttribute(AUTO_DONE_ATTR) === '1') continue;
+
+    const btn = getToolbar(postEl)?.querySelector(`[${BTN_ATTR}]`);
+    if (!btn || btn.classList.contains('is-loading') || btn.dataset.bstState === 'shown') {
+      if (btn?.dataset.bstState === 'shown') postEl.setAttribute(AUTO_DONE_ATTR, '1');
+      continue;
+    }
+
+    autoInflight += 1;
+    Promise.resolve(runTranslate(postEl, btn))
+      .catch(() => {})
+      .finally(() => {
+        autoInflight = Math.max(0, autoInflight - 1);
+        pumpAutoQueue();
+      });
+  }
+}
+
+function enqueueAutoTranslate(postEl) {
+  if (!isAutoMode() || !settings.showButtonOnPosts) return;
+  if (postEl.getAttribute(AUTO_DONE_ATTR) === '1') return;
+  if (postEl.getAttribute(AUTO_QUEUED_ATTR) === '1') return;
+  const btn = getToolbar(postEl)?.querySelector(`[${BTN_ATTR}]`);
+  if (!btn || btn.classList.contains('is-loading') || btn.dataset.bstState === 'shown') {
+    if (btn?.dataset.bstState === 'shown') postEl.setAttribute(AUTO_DONE_ATTR, '1');
+    return;
+  }
+  postEl.setAttribute(AUTO_QUEUED_ATTR, '1');
+  autoQueue.push(postEl);
+  pumpAutoQueue();
+}
+
+function ensureVisibilityObserver() {
+  if (visibilityObserver) return visibilityObserver;
+  visibilityObserver = new IntersectionObserver(
+    (entries) => {
+      if (!isAutoMode()) return;
+      for (const entry of entries) {
+        // Any visible pixel is enough (“хоть чуть-чуть”).
+        if (!entry.isIntersecting) continue;
+        if (!(entry.target instanceof HTMLElement)) continue;
+        enqueueAutoTranslate(entry.target);
+      }
+    },
+    { root: null, rootMargin: '0px', threshold: 0 }
+  );
+  return visibilityObserver;
+}
+
+function observeForAuto(postEl) {
+  if (!isAutoMode() || !settings.showButtonOnPosts) return;
+  const obs = ensureVisibilityObserver();
+  if (postEl.getAttribute(OBSERVED_ATTR) === '1') return;
+  postEl.setAttribute(OBSERVED_ATTR, '1');
+  obs.observe(postEl);
 }
 
 function enhancePost(el) {
@@ -311,6 +410,7 @@ function enhancePost(el) {
       placeToolbar(el, bar);
       bindToolbar(bar, el);
     }
+    observeForAuto(el);
     return;
   }
   if (!settings.showButtonOnPosts) return;
@@ -320,12 +420,18 @@ function enhancePost(el) {
 
   el.setAttribute(POST_ATTR, '1');
   ensureButton(el);
+  observeForAuto(el);
 }
 
 export function scanPosts() {
   if (!settings.showButtonOnPosts) {
+    stopAutoTranslate();
     document.querySelectorAll(`[${TOOLBAR_ATTR}]`).forEach((el) => el.remove());
     return;
+  }
+
+  if (!isAutoMode()) {
+    stopAutoTranslate();
   }
 
   findPostTextRoots().forEach(enhancePost);

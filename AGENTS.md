@@ -60,7 +60,7 @@ bluesky-translator/
 4. Inject a **Translate** toolbar as a sibling after each text node (quote cards: after media); on click call the configured provider via `GM_xmlhttpRequest`.
 5. Show the translation in a result box; toggle hide/show on the same button.
 6. Cache successful translations in `GM_getValue` / `GM_setValue` (`bst_cache_v1`); settings in `bst_settings` (including `provider` + `providerConfig`).
-7. Settings via sidebar **Translator** / `GM_registerMenuCommand`; toasts for save / cache clear / version bump.
+7. Settings via sidebar **Translator** / `GM_registerMenuCommand`; toasts for save / cache clear.
 
 Keep rate limits polite: cache TTLs, request dedupe (`inflight`), debounce on DOM rescans.
 
@@ -89,8 +89,6 @@ When making any change that should reach users (including fixes and UI polish):
 2. Run `npm run build`.
 3. Add a Keep a Changelog entry in `CHANGELOG.md`.
 4. Update [`README.md`](README.md) wherever the change is user-visible or developer-facing (features, settings table, how it works, FAQ, badges, layout, etc.). At minimum refresh the version badge / status line when the version changes.
-
-Changing `SCRIPT_VERSION` clears the translation cache on next run (`bst_cache_script_version`).
 
 ## Localization
 

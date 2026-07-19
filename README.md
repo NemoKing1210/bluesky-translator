@@ -3,14 +3,14 @@
 [![CI](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml)
 [![Install userscript](https://img.shields.io/badge/⬇_Install-userscript-1083fe?style=for-the-badge)](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/bluesky-translator.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.11-green?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.16-green?style=for-the-badge)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=for-the-badge)](package.json)
 
 Userscript that adds **in-place translation** for posts on [Bluesky](https://bsky.app) — without leaving the feed.
 
 Compatible with [Tampermonkey](https://www.tampermonkey.net/), [Violentmonkey](https://violentmonkey.github.io/), [Greasemonkey](https://www.greasespot.net/), [ScriptCat](https://scriptcat.org/), and other managers that support the `// ==UserScript==` metadata block.
 
-> **Status:** early (`0.1.11`) — translate button, settings, cache, multi-language UI.
+> **Status:** early (`0.1.16`) — translate button, settings, cache, multi-language UI.
 > **Note:** Not affiliated with Bluesky Social PBC.
 
 ---
@@ -74,6 +74,7 @@ For hot reload during development, run `npm run dev` and install the Vite-served
 ### On Bluesky (`bsky.app`)
 
 - **Translate** button on its own row under post text (spinner while loading; click does not open the post)
+- Optional **automatic** mode: translate as soon as a post is even slightly on screen
 - Same button on **quoted / embedded** posts inside the feed (not only the outer post)
 - Translation shown in a result panel only when ready (smooth expand); click again to hide
 - Target language from settings — **Auto** follows the UI / browser locale, or pick from ~40 languages with full names and flags
@@ -88,7 +89,7 @@ For hot reload during development, run `npm run dev` and install the Vite-served
   - Left sidebar item **Translator** (next to Bluesky’s Settings)
   - Userscript manager menu command
 - Interface languages: English, Русский, 中文, Español, Português, Deutsch, Français, 日本語 (+ Auto)
-- Toast notifications for save / cache clear / script update
+- Toast notifications for save / cache clear
 - Translation cache in userscript storage (configurable TTL)
 
 ### Technical
@@ -108,7 +109,7 @@ Open **Translator** in the left nav, or the manager menu → **Bluesky Translato
 |-----|---------------------|---------|
 | **General** | Interface language; show Translate on posts | Auto / on |
 | **Providers** | Translation engine badge on tab; provider + API credentials / URL fields | Google |
-| **Translation** | Target language badge on tab; target language (flags + full names); skip if already target language | Auto / on |
+| **Translation** | Target language badge on tab; translation mode (button / automatic); target language; skip if already target language | Button / Auto / on |
 | **Cache** | Occupancy % badge on tab; usage meter; cache hours (`0` = off); clear cache | 24 |
 | **Debug** | Show cache hits in translation meta | off |
 | **About** | Description, repository link, author card | — |
@@ -123,7 +124,7 @@ Saving closes the panel and applies immediately (nav labels and post buttons ref
 2. Finds post text via `[data-testid="postText"]` and quoted embeds (`[aria-label^="Post by"] …`) — adjustable in `src/constants.js` if Bluesky’s DOM changes.
 3. Injects a **Translate** toolbar as a sibling after each eligible text node.
 4. On click, requests the configured provider (Google by default) through the userscript sandbox (`@connect`).
-5. Stores successful results in `GM` storage (`bst_cache_v1`) until TTL expires or the script version changes.
+5. Stores successful results in `GM` storage (`bst_cache_v1`) until TTL expires or you clear the cache.
 
 Bluesky’s web client updates often — if buttons stop appearing, selectors in `POST_TEXT_SELECTORS` are the first place to look.
 
@@ -140,8 +141,6 @@ The built script ships with `@updateURL` / `@downloadURL` pointing at GitHub `ma
 3. Add an entry to [`CHANGELOG.md`](CHANGELOG.md).
 4. Update the version badge in this README if needed.
 5. Push to `main`.
-
-A version bump also clears the translation cache on the user’s next run.
 
 ---
 

@@ -11,7 +11,6 @@ export const AUTHOR_AVATAR_URL =
 export const SCRIPT_VERSION = pkg.version;
 export const SETTINGS_KEY = 'bst_settings';
 export const CACHE_KEY = 'bst_cache_v1';
-export const CACHE_VERSION_KEY = 'bst_cache_script_version';
 export const ROOT_ATTR = 'data-bst-root';
 export const POST_ATTR = 'data-bst-post';
 export const BTN_ATTR = 'data-bst-btn';
@@ -23,6 +22,8 @@ export const SCAN_DEBOUNCE_MS = 350;
 export const CACHE_HOURS_MAX = 168;
 /** Soft advisory budget for the settings meter (GM storage has no fixed quota). */
 export const CACHE_SOFT_LIMIT_BYTES = 2 * 1024 * 1024;
+/** Max parallel auto-translations while scrolling the feed. */
+export const AUTO_TRANSLATE_MAX_INFLIGHT = 2;
 
 /** Google Translate free endpoint (no API key). */
 export const GOOGLE_TRANSLATE_URL =
@@ -91,6 +92,8 @@ export const DEFAULT_SETTINGS = {
   cacheHours: 24,
   uiLocale: 'auto',
   targetLang: 'auto',
+  /** 'button' = Translate on click; 'auto' = translate when post enters the viewport */
+  translateMode: 'button',
   autoDetectSkipSameLang: true,
   showButtonOnPosts: true,
   debugMode: false,

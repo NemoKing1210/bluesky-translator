@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.16] - 2026-07-19
+
+### Changed
+
+- Translation cache is no longer cleared when the script version changes
+
+## [0.1.15] - 2026-07-19
+
+### Fixed
+
+- Page scroll is locked while the settings dialog is open
+
+## [0.1.14] - 2026-07-19
+
+### Changed
+
+- Translation tab badge shows only the target language (not translation mode)
+
+## [0.1.13] - 2026-07-19
+
+### Changed
+
+- Settings dialog width ~1.5× again (1035px)
+
+## [0.1.12] - 2026-07-19
+
+### Added
+
+- Translation mode: **On button click** (default) or **Automatic** — auto-translates when a post is even slightly visible (IntersectionObserver, capped concurrency)
+
 ## [0.1.11] - 2026-07-19
 
 ### Added

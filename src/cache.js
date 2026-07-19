@@ -6,8 +6,6 @@ import {
   CACHE_HOURS_MAX,
   CACHE_KEY,
   CACHE_SOFT_LIMIT_BYTES,
-  CACHE_VERSION_KEY,
-  SCRIPT_VERSION,
 } from './constants.js';
 import { fmt } from './i18n/index.js';
 import {
@@ -231,26 +229,4 @@ export function paintCacheMeter(root) {
   wrap.innerHTML = buildCacheMeterHtml(getCacheUsageStats()).trim();
   const next = wrap.firstElementChild;
   if (next) current.replaceWith(next);
-}
-
-/**
- * Wipe lookup cache when SCRIPT_VERSION changes (upgrade / downgrade).
- * @returns {'upgrade' | 'same' | 'fresh'}
- */
-export function migrateCacheForScriptVersion() {
-  let prev = null;
-  try {
-    prev = GM_getValue(CACHE_VERSION_KEY, null);
-  } catch (_) {
-    prev = null;
-  }
-  if (prev === SCRIPT_VERSION) return 'same';
-  const hadPrev = prev != null && prev !== '';
-  clearCache();
-  try {
-    GM_setValue(CACHE_VERSION_KEY, SCRIPT_VERSION);
-  } catch (_) {
-    /* ignore */
-  }
-  return hadPrev ? 'upgrade' : 'fresh';
 }

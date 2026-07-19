@@ -289,15 +289,32 @@ button.bst-nav-item svg {
   padding: 16px;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+html.bst-scroll-lock,
+html.bst-scroll-lock body.bst-scroll-lock {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+body.bst-scroll-lock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
 }
 
 .bst-settings {
   --bst-accent: #1083fe;
   display: flex;
   flex-direction: column;
-  width: min(690px, 100%);
+  width: min(1035px, 100%);
   max-height: min(88vh, 960px);
   overflow: hidden;
+  touch-action: auto;
+  overscroll-behavior: contain;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: #12161e;
