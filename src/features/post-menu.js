@@ -15,30 +15,9 @@ import {
 import { scanPosts } from './posts.js';
 import { showToast } from './toast.js';
 
-const MENU_ICON_TRANSLATE = `<svg fill="none" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#ABB8C9" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>`;
+const MENU_ICON_TRANSLATE = `<svg fill="none" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>`;
 
-const MENU_ICON_BLOCK = `<svg fill="none" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#ABB8C9" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/></svg>`;
-
-function findOpenPostMenus() {
-  return [...document.querySelectorAll('[role="menu"]')].filter((menu) =>
-    menu.querySelector(
-      '[data-testid="postDropdownCopyTextBtn"], [data-testid="postDropdownTranslateBtn"], [data-testid="postDropdownMuteBtn"]'
-    )
-  );
-}
-
-function findOpenDropdownTrigger() {
-  return (
-    document.querySelector('[data-testid="postDropdownBtn"][aria-expanded="true"]') ||
-    document.querySelector('[data-testid="postDropdownBtn"][aria-pressed="true"]')
-  );
-}
-
-function closeOpenMenus() {
-  document.dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
-  );
-}
+const MENU_ICON_BLOCK = `<svg fill="none" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/></svg>`;
 
 function buildMenuShell(kind, label, iconHtml, onClick) {
   const item = document.createElement('div');
@@ -50,8 +29,8 @@ function buildMenuShell(kind, label, iconHtml, onClick) {
   item.style.cssText =
     'flex-direction: row; align-items: center; gap: 16px; padding: 8px 10px; border-radius: 4px; overflow: hidden; min-height: 32px; outline: 0px; cursor: pointer;';
   item.innerHTML =
-    `<div dir="auto" class="css-146c3p1 bst-menu-item__label" style="font-size: 13.1px; letter-spacing: 0px; color: rgb(226, 231, 238); line-height: 17px; flex: 1 1 0%; font-weight: 600;">${escapeHtml(label)}</div>` +
-    `<div class="css-g5y9jx" style="margin-right: -2px; margin-left: 12px;">${iconHtml}</div>`;
+    `<div dir="auto" class="css-146c3p1 bst-menu-item__label" style="font-size: 13.1px; letter-spacing: 0px; line-height: 17px; flex: 1 1 0%; font-weight: 600;">${escapeHtml(label)}</div>` +
+    `<div class="css-g5y9jx bst-menu-item__icon" style="margin-right: -2px; margin-left: 12px;">${iconHtml}</div>`;
 
   item.addEventListener(
     'click',
@@ -105,6 +84,27 @@ function buildBlockMenuItem(handle) {
   });
 }
 
+function findOpenPostMenus() {
+  return [...document.querySelectorAll('[role="menu"]')].filter((menu) =>
+    menu.querySelector(
+      '[data-testid="postDropdownCopyTextBtn"], [data-testid="postDropdownTranslateBtn"], [data-testid="postDropdownMuteBtn"]'
+    )
+  );
+}
+
+function findOpenDropdownTrigger() {
+  return (
+    document.querySelector('[data-testid="postDropdownBtn"][aria-expanded="true"]') ||
+    document.querySelector('[data-testid="postDropdownBtn"][aria-pressed="true"]')
+  );
+}
+
+function closeOpenMenus() {
+  document.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+  );
+}
+
 function injectItem(menu, item, afterEl) {
   const copyBtn = menu.querySelector('[data-testid="postDropdownCopyTextBtn"]');
   const translateBtn = menu.querySelector('[data-testid="postDropdownTranslateBtn"]');
@@ -132,7 +132,11 @@ function injectIntoMenu(menu, handle) {
 
   if (settings.translateMode === 'auto') {
     if (!existingAuto) {
-      injectItem(menu, buildAutoMenuItem(handle), menu.querySelector('[data-testid="postDropdownTranslateBtn"]'));
+      injectItem(
+        menu,
+        buildAutoMenuItem(handle),
+        menu.querySelector('[data-testid="postDropdownTranslateBtn"]')
+      );
     }
   } else {
     existingAuto?.remove();

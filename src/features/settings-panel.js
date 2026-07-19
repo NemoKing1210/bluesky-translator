@@ -47,33 +47,50 @@ function syncNavButtonLabels(btn) {
   if (label) label.textContent = t.navSettings;
 }
 
+function stripColorStyles(cssText) {
+  return String(cssText || '')
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part && !/^color\s*:/i.test(part))
+    .join('; ');
+}
+
 function buildNavButton(template) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.setAttribute(NAV_BTN_ATTR, '1');
   btn.className = `${template.className} bst-nav-item`.trim();
-  btn.style.cssText = template.getAttribute('style') || '';
+  btn.style.cssText = stripColorStyles(template.getAttribute('style') || '');
   btn.setAttribute('aria-label', t.navSettings);
   btn.tabIndex = 0;
 
   const iconWrap = document.createElement('div');
   iconWrap.className = template.querySelector(':scope > div')?.className || '';
-  iconWrap.style.cssText =
+  iconWrap.style.cssText = stripColorStyles(
     template.querySelector(':scope > div')?.getAttribute('style') ||
-    'align-items: center; justify-content: center; width: 24px; height: 24px; z-index: 10;';
+      'align-items: center; justify-content: center; width: 24px; height: 24px; z-index: 10;'
+  );
   iconWrap.innerHTML = NAV_ICON;
   const svg = iconWrap.querySelector('svg');
-  if (svg) svg.style.color = 'currentColor';
+  if (svg) {
+    svg.style.color = 'currentColor';
+    svg.querySelectorAll('[fill]').forEach((node) => {
+      if (node.getAttribute('fill') && node.getAttribute('fill') !== 'none') {
+        node.setAttribute('fill', 'currentColor');
+      }
+    });
+  }
 
   const labelEl = document.createElement('div');
   const templateLabel = template.querySelector(':scope > div:last-child');
   if (templateLabel) {
     labelEl.className = templateLabel.className;
-    labelEl.style.cssText = templateLabel.getAttribute('style') || '';
+    labelEl.style.cssText = stripColorStyles(templateLabel.getAttribute('style') || '');
   } else {
     labelEl.style.cssText =
       'font-size: 18.8px; letter-spacing: 0px; line-height: 24px; font-weight: 400;';
   }
+  labelEl.style.removeProperty('color');
   labelEl.setAttribute('dir', 'auto');
   labelEl.setAttribute('data-bst-nav-label', '1');
   labelEl.textContent = t.navSettings;
@@ -87,6 +104,23 @@ function buildNavButton(template) {
   return btn;
 }
 
+function syncNavButtonChrome(btn) {
+  syncNavButtonLabels(btn);
+  btn.style.cssText = stripColorStyles(btn.getAttribute('style') || '');
+  // Color comes from CSS var(--bst-chrome-fg); clear inline overrides.
+  btn.style.removeProperty('color');
+  btn.querySelectorAll('[data-bst-nav-label], svg').forEach((el) => {
+    if (el instanceof HTMLElement || el instanceof SVGElement) {
+      el.style.removeProperty('color');
+    }
+  });
+  btn.querySelectorAll('svg [fill]').forEach((node) => {
+    if (node.getAttribute('fill') && node.getAttribute('fill') !== 'none') {
+      node.setAttribute('fill', 'currentColor');
+    }
+  });
+}
+
 /**
  * Inject a Translator settings row into Bluesky’s left `nav[role=navigation]`,
  * immediately before the native Settings link.
@@ -95,7 +129,7 @@ export function ensureNavSettingsButton() {
   for (const nav of findSideNavs()) {
     const existing = nav.querySelector(`[${NAV_BTN_ATTR}]`);
     if (existing) {
-      syncNavButtonLabels(existing);
+      syncNavButtonChrome(existing);
       continue;
     }
 

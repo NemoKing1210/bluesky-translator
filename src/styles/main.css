@@ -1,11 +1,46 @@
 /* Bluesky Translator — injected styles */
 
-/* Left nav — match Bluesky row chrome; keep button reset minimal */
+/* Theme tokens — Bluesky uses html.theme--light / theme--dark. */
+html.theme--light,
+html[data-bst-theme='light'] {
+  --bst-feed-fg: #0b1419;
+  --bst-feed-fg-muted: rgba(11, 20, 25, 0.62);
+  --bst-feed-panel-bg: rgba(16, 131, 254, 0.08);
+  --bst-feed-panel-border: rgba(16, 131, 254, 0.22);
+  --bst-nav-hover: rgba(11, 20, 25, 0.06);
+  --bst-chrome-fg: #0b1419;
+  --bst-toast-bg: rgba(255, 255, 255, 0.96);
+  --bst-toast-fg: #0b1419;
+  --bst-toast-fg-muted: rgba(11, 20, 25, 0.7);
+  --bst-toast-border: rgba(11, 20, 25, 0.1);
+  --bst-toast-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+  --bst-toast-icon: #1083fe;
+  --bst-toast-bar: rgba(16, 131, 254, 0.9);
+}
+
+html:not(.theme--light),
+html[data-bst-theme='dark'] {
+  --bst-feed-fg: #eef2f7;
+  --bst-feed-fg-muted: rgba(238, 242, 247, 0.65);
+  --bst-feed-panel-bg: rgba(120, 140, 170, 0.12);
+  --bst-feed-panel-border: rgba(120, 140, 170, 0.32);
+  --bst-nav-hover: rgba(255, 255, 255, 0.08);
+  --bst-chrome-fg: #e2e7ee;
+  --bst-toast-bg: rgba(18, 22, 30, 0.94);
+  --bst-toast-fg: #f2f4f8;
+  --bst-toast-fg-muted: rgba(242, 244, 248, 0.82);
+  --bst-toast-border: rgba(255, 255, 255, 0.1);
+  --bst-toast-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --bst-toast-icon: #8ec5ff;
+  --bst-toast-bar: rgba(16, 131, 254, 0.85);
+}
+
+/* Left nav — explicit fg (inherit picks the wrong ancestor color on light). */
 button.bst-nav-item {
   appearance: none;
   border: 0;
   background: transparent;
-  color: inherit;
+  color: var(--bst-chrome-fg) !important;
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -14,12 +49,30 @@ button.bst-nav-item {
 }
 
 button.bst-nav-item:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--bst-nav-hover);
+}
+
+button.bst-nav-item svg,
+button.bst-nav-item [data-bst-nav-label],
+button.bst-nav-item svg [fill]:not([fill='none']) {
+  color: var(--bst-chrome-fg) !important;
+  fill: var(--bst-chrome-fg) !important;
 }
 
 button.bst-nav-item svg {
   display: block;
-  color: inherit;
+}
+
+.bst-menu-item,
+.bst-menu-item__label,
+.bst-menu-item__icon {
+  color: var(--bst-chrome-fg) !important;
+}
+
+.bst-menu-item svg,
+.bst-menu-item svg [fill]:not([fill='none']) {
+  color: var(--bst-chrome-fg) !important;
+  fill: var(--bst-chrome-fg) !important;
 }
 
 .bst-toolbar {
@@ -117,7 +170,7 @@ button.bst-nav-item svg {
 
 .bst-split__pane--translated {
   padding-top: 0.45rem;
-  border-top: 1px solid rgba(120, 140, 170, 0.28);
+  border-top: 1px solid var(--bst-feed-panel-border);
 }
 
 .bst-split__label {
@@ -125,7 +178,7 @@ button.bst-nav-item svg {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  opacity: 0.72;
+  color: var(--bst-feed-fg-muted);
   margin-bottom: 0.2rem;
 }
 
@@ -133,6 +186,7 @@ button.bst-nav-item svg {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.45;
+  color: var(--bst-feed-fg);
 }
 
 @keyframes bst-spin {
@@ -182,8 +236,9 @@ button.bst-nav-item svg {
 .bst-result__inner {
   padding: 0.65rem 0.75rem;
   border-radius: 10px;
-  border: 1px solid rgba(120, 140, 170, 0.28);
-  background: rgba(120, 140, 170, 0.08);
+  border: 1px solid var(--bst-feed-panel-border);
+  background: var(--bst-feed-panel-bg);
+  color: var(--bst-feed-fg);
 }
 
 .bst-result__label {
@@ -191,13 +246,15 @@ button.bst-nav-item svg {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  opacity: 0.72;
+  color: var(--bst-feed-fg-muted);
+  opacity: 1;
   margin-bottom: 0.25rem;
 }
 
 .bst-result__meta {
   font-size: 0.75rem;
-  opacity: 0.65;
+  color: var(--bst-feed-fg-muted);
+  opacity: 1;
   margin-bottom: 0.35rem;
 }
 
@@ -205,11 +262,12 @@ button.bst-nav-item svg {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.45;
+  color: var(--bst-feed-fg);
 }
 
 .bst-result__text a,
 .bst-text--translated a {
-  color: #208bfe;
+  color: #1083fe;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -246,10 +304,11 @@ button.bst-nav-item svg {
   align-items: start;
   padding: 0.75rem 0.8rem 0.9rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(18, 22, 30, 0.94);
-  color: #f2f4f8;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--bst-toast-border);
+  background: var(--bst-toast-bg);
+  color: var(--bst-toast-fg);
+  box-shadow: var(--bst-toast-shadow);
+  backdrop-filter: blur(10px);
   opacity: 0;
   transform: translateY(-8px);
   transition:
@@ -272,16 +331,26 @@ button.bst-nav-item svg {
   width: 1.15rem;
   height: 1.15rem;
   margin-top: 0.1rem;
-  color: #8ec5ff;
+  color: var(--bst-toast-icon);
 }
 
 .bst-toast--success .bst-toast__icon {
-  color: #4ade80;
+  color: #16a34a;
 }
 .bst-toast--warning .bst-toast__icon {
-  color: #fbbf24;
+  color: #d97706;
 }
 .bst-toast--error .bst-toast__icon {
+  color: #dc2626;
+}
+
+html:not(.theme--light) .bst-toast--success .bst-toast__icon {
+  color: #4ade80;
+}
+html:not(.theme--light) .bst-toast--warning .bst-toast__icon {
+  color: #fbbf24;
+}
+html:not(.theme--light) .bst-toast--error .bst-toast__icon {
   color: #f87171;
 }
 
@@ -295,11 +364,12 @@ button.bst-nav-item svg {
 .bst-toast__title {
   font-weight: 700;
   font-size: 0.9rem;
+  color: var(--bst-toast-fg);
 }
 
 .bst-toast__text {
   font-size: 0.82rem;
-  opacity: 0.85;
+  color: var(--bst-toast-fg-muted);
   line-height: 1.35;
 }
 
@@ -307,8 +377,8 @@ button.bst-nav-item svg {
   appearance: none;
   border: 0;
   background: transparent;
-  color: inherit;
-  opacity: 0.55;
+  color: var(--bst-toast-fg);
+  opacity: 0.5;
   cursor: pointer;
   padding: 0;
   width: 1.25rem;
@@ -332,7 +402,7 @@ button.bst-nav-item svg {
   height: 2px;
   width: 100%;
   transform-origin: left center;
-  background: rgba(16, 131, 254, 0.85);
+  background: var(--bst-toast-bar);
   animation: bst-toast-bar linear forwards;
 }
 
@@ -1200,10 +1270,4 @@ body.bst-scroll-lock {
 
 .bst-about__email:hover {
   text-decoration: underline;
-}
-
-@media (prefers-color-scheme: light) {
-  .bst-result__inner {
-    background: rgba(16, 131, 254, 0.06);
-  }
 }

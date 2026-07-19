@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.29] - 2026-07-19
+
+### Changed
+
+- Toasts adapt to Bluesky light theme (html.theme--light)
+
+## [0.1.28] - 2026-07-19
+
+### Fixed
+
+- Nav and post-menu items use explicit theme foreground colors (no inherit)
+
+## [0.1.27] - 2026-07-19
+
+### Changed
+
+- Detect Bluesky light/dark theme via html.theme--light class
+
+## [0.1.26] - 2026-07-19
+
+### Fixed
+
+- Light theme contrast: nav Translator row, translation panel text, post menu items
+
 ## [0.1.25] - 2026-07-19
 
 ### Changed
