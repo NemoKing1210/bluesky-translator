@@ -120,30 +120,78 @@ function ensureResult(postEl) {
   box = document.createElement('div');
   box.className = 'bst-result';
   box.setAttribute(RESULT_ATTR, '1');
-  box.hidden = true;
+  box.innerHTML = '<div class="bst-result__clip"><div class="bst-result__inner"></div></div>';
   bar.appendChild(box);
   return box;
 }
 
-function setResultContent(box, { translated, detected, fromCache, error }) {
-  box.hidden = false;
+function buildResultInnerHtml({ translated, detected, fromCache, error }) {
   if (error) {
-    box.innerHTML =
+    return (
       `<div class="bst-result__error">${escapeHtml(error)}</div>` +
-      `<button type="button" class="bst-btn bst-btn--retry" data-bst-retry="1">${escapeHtml(t.btnRetry)}</button>`;
-    return;
+      `<button type="button" class="bst-btn bst-btn--retry" data-bst-retry="1">${escapeHtml(t.btnRetry)}</button>`
+    );
   }
 
   const metaParts = [];
   if (detected) metaParts.push(fmt(t.detectedLang, { lang: detected }));
   if (fromCache && settings.debugMode) metaParts.push('cache');
 
-  box.innerHTML =
+  return (
     `<div class="bst-result__label">${escapeHtml(t.translationLabel)}</div>` +
     (metaParts.length
       ? `<div class="bst-result__meta">${escapeHtml(metaParts.join(' · '))}</div>`
       : '') +
-    `<div class="bst-result__text">${escapeHtml(translated)}</div>`;
+    `<div class="bst-result__text">${escapeHtml(translated)}</div>`
+  );
+}
+
+/** Reveal result only when content is ready, with expand animation. */
+function showResult(postEl, payload) {
+  const box = ensureResult(postEl);
+  const inner = box.querySelector('.bst-result__inner');
+  if (!inner) return box;
+
+  inner.innerHTML = buildResultInnerHtml(payload);
+  box.classList.remove('is-open', 'is-closing');
+  // Closed state first, then open on next frame so CSS can animate.
+  void box.offsetHeight;
+  requestAnimationFrame(() => {
+    box.classList.add('is-open');
+  });
+  return box;
+}
+
+function hideResult(postEl, { remove = false } = {}) {
+  const box = postEl.querySelector(`[${RESULT_ATTR}]`);
+  if (!box) return;
+
+  const finish = () => {
+    box.classList.remove('is-closing');
+    if (remove) box.remove();
+    else {
+      const inner = box.querySelector('.bst-result__inner');
+      if (inner) inner.innerHTML = '';
+    }
+  };
+
+  if (!box.classList.contains('is-open')) {
+    finish();
+    return;
+  }
+
+  box.classList.remove('is-open');
+  box.classList.add('is-closing');
+  const onEnd = (event) => {
+    if (event.target !== box.querySelector('.bst-result__clip')) return;
+    box.removeEventListener('transitionend', onEnd);
+    finish();
+  };
+  box.addEventListener('transitionend', onEnd);
+  setTimeout(() => {
+    box.removeEventListener('transitionend', onEnd);
+    finish();
+  }, 360);
 }
 
 function setButtonLabel(btn, label, { loading = false } = {}) {
@@ -163,14 +211,14 @@ function setButtonLabel(btn, label, { loading = false } = {}) {
 async function runTranslate(postEl, btn) {
   const text = extractPostText(postEl);
   if (!text) {
-    setResultContent(ensureResult(postEl), { error: t.errEmpty });
+    showResult(postEl, { error: t.errEmpty });
     return;
   }
 
   const targetLang = resolveTargetLang(settings.targetLang, locale);
+  // Keep previous result hidden until the new translation is ready.
+  hideResult(postEl, { remove: true });
   setButtonLabel(btn, t.translating, { loading: true });
-  const box = ensureResult(postEl);
-  box.hidden = true;
 
   try {
     const result = await translateText(text, targetLang);
@@ -180,13 +228,13 @@ async function runTranslate(postEl, btn) {
       result.detectedSourceLang.toLowerCase() === targetLang.toLowerCase() &&
       result.text.trim() === text.trim()
     ) {
-      setResultContent(box, {
+      showResult(postEl, {
         translated: t.sameLanguage,
         detected: result.detectedSourceLang,
         fromCache: result.fromCache,
       });
     } else {
-      setResultContent(box, {
+      showResult(postEl, {
         translated: result.text,
         detected: result.detectedSourceLang,
         fromCache: result.fromCache,
@@ -198,7 +246,7 @@ async function runTranslate(postEl, btn) {
     if (settings.debugMode) {
       console.warn('[Bluesky Translator] translate failed', err);
     }
-    setResultContent(box, { error: t.errNetwork });
+    showResult(postEl, { error: t.errNetwork });
     setButtonLabel(btn, t.btnTranslate);
     btn.dataset.bstState = '';
   }
@@ -207,8 +255,7 @@ async function runTranslate(postEl, btn) {
 function onTranslateClick(postEl, btn) {
   if (btn.classList.contains('is-loading')) return;
   if (btn.dataset.bstState === 'shown') {
-    const box = postEl.querySelector(`[${RESULT_ATTR}]`);
-    if (box) box.hidden = true;
+    hideResult(postEl, { remove: true });
     btn.dataset.bstState = '';
     setButtonLabel(btn, t.btnTranslate);
     return;

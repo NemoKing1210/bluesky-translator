@@ -92,10 +92,40 @@ button.bst-nav-item svg {
 }
 
 .bst-result {
-  display: block;
+  display: grid;
+  grid-template-rows: 0fr;
   width: 100%;
   box-sizing: border-box;
+  margin-top: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    margin-top 0.28s ease;
+}
+
+.bst-result.is-open {
+  grid-template-rows: 1fr;
   margin-top: 0.55rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.bst-result.is-closing {
+  grid-template-rows: 0fr;
+  margin-top: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.bst-result__clip {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bst-result__inner {
   padding: 0.65rem 0.75rem;
   border-radius: 10px;
   border: 1px solid rgba(120, 140, 170, 0.28);
@@ -764,7 +794,7 @@ button.bst-nav-item svg {
 }
 
 @media (prefers-color-scheme: light) {
-  .bst-result {
+  .bst-result__inner {
     background: rgba(16, 131, 254, 0.06);
   }
 }
