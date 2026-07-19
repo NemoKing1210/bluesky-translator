@@ -10,6 +10,7 @@ import {
 import { fmt, resolveTargetLang } from '../i18n/index.js';
 import { locale, settings, t } from '../state.js';
 import { escapeHtml } from '../utils/html.js';
+import { extractLinkedText, restoreLinkedHtml } from '../utils/linked-text.js';
 import { isAutoTranslateAllowedForHandle } from './allowlist.js';
 import { resolvePostAuthorHandle } from './author.js';
 
@@ -103,23 +104,29 @@ function placeToolbar(postEl, bar) {
   }
 }
 
-function extractPostText(el) {
+/** Clone of post text with toolbar chrome stripped (uses stored original when replaced). */
+function clonePostContent(el) {
   const stored = el.getAttribute(ORIGINAL_HTML_ATTR);
   if (stored != null) {
     const tmp = document.createElement('div');
     tmp.innerHTML = stored;
-    return String(tmp.innerText || tmp.textContent || '')
-      .replace(/\u00a0/g, ' ')
-      .trim();
+    return tmp;
   }
 
   const clone = el.cloneNode(true);
   clone
     .querySelectorAll(`[${TOOLBAR_ATTR}], [${BTN_ATTR}], [${RESULT_ATTR}]`)
     .forEach((n) => n.remove());
-  return String(clone.innerText || clone.textContent || '')
-    .replace(/\u00a0/g, ' ')
-    .trim();
+  return clone;
+}
+
+function extractPostText(el) {
+  return extractLinkedText(clonePostContent(el)).text;
+}
+
+/** Plain text for translate APIs, with anchors turned into stable tokens. */
+function extractPostForTranslate(el) {
+  return extractLinkedText(clonePostContent(el));
 }
 
 function restoreOriginalText(postEl) {
@@ -130,11 +137,11 @@ function restoreOriginalText(postEl) {
   postEl.classList.remove('bst-text--translated');
 }
 
-function applyReplacedText(postEl, translated) {
+function applyReplacedText(postEl, translated, links = []) {
   if (!postEl.hasAttribute(ORIGINAL_HTML_ATTR)) {
     postEl.setAttribute(ORIGINAL_HTML_ATTR, postEl.innerHTML);
   }
-  postEl.innerHTML = escapeHtml(translated).replace(/\n/g, '<br>');
+  postEl.innerHTML = restoreLinkedHtml(translated, links);
   postEl.classList.add('bst-text--translated');
 }
 
@@ -164,8 +171,13 @@ function bindToolbar(bar, postEl) {
   bar.addEventListener(
     'click',
     (event) => {
-      event.preventDefault();
       event.stopPropagation();
+
+      // Let translation-panel links navigate; only block post-open bubbling.
+      const anchor = event.target.closest?.('a[href]');
+      if (anchor && bar.contains(anchor)) return;
+
+      event.preventDefault();
 
       const retry = event.target.closest?.('[data-bst-retry]');
       if (retry && bar.contains(retry)) {
@@ -224,7 +236,7 @@ function ensureResult(postEl) {
   return box;
 }
 
-function buildResultInnerHtml({ translated, detected, fromCache, error }) {
+function buildResultInnerHtml({ translated, detected, fromCache, error, links }) {
   if (error) {
     return (
       `<div class="bst-result__error">${escapeHtml(error)}</div>` +
@@ -236,12 +248,14 @@ function buildResultInnerHtml({ translated, detected, fromCache, error }) {
   if (detected) metaParts.push(fmt(t.detectedLang, { lang: detected }));
   if (fromCache && settings.debugMode) metaParts.push('cache');
 
+  const body = restoreLinkedHtml(translated, links || []);
+
   return (
     `<div class="bst-result__label">${escapeHtml(t.translationLabel)}</div>` +
     (metaParts.length
       ? `<div class="bst-result__meta">${escapeHtml(metaParts.join(' · '))}</div>`
       : '') +
-    `<div class="bst-result__text">${escapeHtml(translated)}</div>`
+    `<div class="bst-result__text">${body}</div>`
   );
 }
 
@@ -255,7 +269,7 @@ function showResult(postEl, payload) {
 
   if (useReplace) {
     hideResult(postEl, { remove: true });
-    applyReplacedText(postEl, payload.translated);
+    applyReplacedText(postEl, payload.translated, payload.links || []);
     return null;
   }
 
@@ -321,7 +335,7 @@ function setButtonLabel(btn, label, { loading = false } = {}) {
 }
 
 async function runTranslate(postEl, btn) {
-  const text = extractPostText(postEl);
+  const { text, links } = extractPostForTranslate(postEl);
   if (!text) {
     showResult(postEl, { error: t.errEmpty });
     return;
@@ -352,6 +366,7 @@ async function runTranslate(postEl, btn) {
         translated: result.text,
         detected: result.detectedSourceLang,
         fromCache: result.fromCache,
+        links,
       });
       setButtonLabel(btn, replaced ? t.btnShowOriginal : t.btnHide);
     }

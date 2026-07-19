@@ -3,14 +3,14 @@
 [![CI](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml)
 [![Install userscript](https://img.shields.io/badge/⬇_Install-userscript-1083fe?style=for-the-badge)](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/bluesky-translator.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.19-green?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.20-green?style=for-the-badge)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=for-the-badge)](package.json)
 
 Userscript that adds **in-place translation** for posts on [Bluesky](https://bsky.app) — without leaving the feed.
 
 Compatible with [Tampermonkey](https://www.tampermonkey.net/), [Violentmonkey](https://violentmonkey.github.io/), [Greasemonkey](https://www.greasespot.net/), [ScriptCat](https://scriptcat.org/), and other managers that support the `// ==UserScript==` metadata block.
 
-> **Status:** early (`0.1.19`) — translate button, settings, cache, multi-language UI.
+> **Status:** early (`0.1.20`) — translate button, settings, cache, multi-language UI.
 > **Note:** Not affiliated with Bluesky Social PBC.
 
 ---
@@ -76,7 +76,7 @@ For hot reload during development, run `npm run dev` and install the Vite-served
 - **Translate** button on its own row under post text (spinner while loading; click does not open the post)
 - Optional **automatic** mode: translate as soon as a post is even slightly on screen (all accounts or a selected allowlist; manage via settings or the post menu)
 - Same button on **quoted / embedded** posts inside the feed (not only the outer post)
-- Translation shown in a result panel (smooth expand) or in place of the original text (Show original); click again to hide / restore
+- Translation shown in a result panel (smooth expand) or in place of the original text (Show original); click again to hide / restore; links and mentions stay clickable
 - Target language from settings — **Auto** follows the UI / browser locale, or pick from ~40 languages with full names and flags
 - Optional skip when the post is already in the target language
 - Works with Bluesky’s SPA navigation (scroll, route changes, infinite feed)

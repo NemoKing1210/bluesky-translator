@@ -153,6 +153,18 @@ button.bst-nav-item svg {
   line-height: 1.45;
 }
 
+.bst-result__text a,
+.bst-text--translated a {
+  color: #208bfe;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bst-result__text a:hover,
+.bst-text--translated a:hover {
+  text-decoration-thickness: 2px;
+}
+
 .bst-result__error {
   color: #e3533a;
   font-size: 0.9rem;
