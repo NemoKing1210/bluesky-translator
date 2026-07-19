@@ -13,6 +13,16 @@ Compatible with [Tampermonkey](https://www.tampermonkey.net/), [Violentmonkey](h
 > **Status:** early (`0.1.25`) — translate button, settings, cache, multi-language UI.
 > **Note:** Not affiliated with Bluesky Social PBC.
 
+<p align="center">
+  <img src="docs/screenshots/feed-translation-panel.png" alt="Bluesky post with Translate button and Russian translation panel" width="720" />
+</p>
+<p align="center"><sub>Translation panel under a post — original stays visible, links and hashtags remain clickable</sub></p>
+
+<p align="center">
+  <img src="docs/screenshots/settings-general.png" alt="Bluesky Translator settings — General tab" width="720" />
+</p>
+<p align="center"><sub>Settings → General: language, mode, display, account and language filters</sub></p>
+
 ---
 
 ## Table of contents
@@ -182,6 +192,7 @@ bluesky-translator/
 │   ├── providers/           # Provider registry (fields / defaults)
 │   ├── features/            # Posts, SPA, settings, toasts, nav button
 │   └── styles/              # Injected CSS
+├── docs/screenshots/        # README preview images
 ├── scripts/                 # copy-dist + CI artifact verify
 ├── .github/workflows/ci.yml
 ├── bluesky-translator.user.js   # Installable build (committed)
