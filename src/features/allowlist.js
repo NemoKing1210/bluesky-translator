@@ -1,6 +1,7 @@
 import { saveSettings } from '../settings.js';
 import { reloadRuntimeSettings, settings } from '../state.js';
 import { normalizeHandle } from '../utils/handle.js';
+import { isAccountBlocked } from './filters.js';
 
 export function getAutoAllowlist() {
   return Array.isArray(settings.autoAllowlist) ? [...settings.autoAllowlist] : [];
@@ -53,6 +54,7 @@ export function toggleAutoAllowlistHandle(handle) {
 /** Whether this author is eligible for automatic translation. */
 export function isAutoTranslateAllowedForHandle(handle) {
   if (settings.translateMode !== 'auto') return false;
+  if (isAccountBlocked(handle)) return false;
   if (settings.autoScope !== 'allowlist') return true;
   return isInAutoAllowlist(handle);
 }

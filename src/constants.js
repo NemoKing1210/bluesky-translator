@@ -11,6 +11,7 @@ export const AUTHOR_AVATAR_URL =
 export const SCRIPT_VERSION = pkg.version;
 export const SETTINGS_KEY = 'bst_settings';
 export const CACHE_KEY = 'bst_cache_v1';
+export const STATS_KEY = 'bst_stats_v1';
 export const ROOT_ATTR = 'data-bst-root';
 export const POST_ATTR = 'data-bst-post';
 export const BTN_ATTR = 'data-bst-btn';
@@ -97,11 +98,23 @@ export const DEFAULT_SETTINGS = {
   translateMode: 'button',
   /** 'panel' = result below post; 'replace' = swap post text in place */
   displayMode: 'panel',
+  /**
+   * When displayMode is replace:
+   * 'button' = Show original only;
+   * 'hover' = peek original on hover;
+   * 'split' = original + translation together
+   */
+  replaceReveal: 'button',
   /** 'all' = every visible post; 'allowlist' = only listed accounts */
   autoScope: 'all',
   autoAllowlist: [],
+  /** Never show Translate / never auto-translate these accounts */
+  accountBlocklist: [],
+  /** If non-empty, only translate when detected source is in this list */
+  langAllowlist: [],
+  /** Skip translation when detected source is in this list */
+  langBlocklist: [],
   autoDetectSkipSameLang: true,
-  showButtonOnPosts: true,
   debugMode: false,
   provider: 'google',
   providerConfig: mergeProviderConfig(null),

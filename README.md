@@ -3,14 +3,14 @@
 [![CI](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml)
 [![Install userscript](https://img.shields.io/badge/⬇_Install-userscript-1083fe?style=for-the-badge)](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/bluesky-translator.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.20-green?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.23-green?style=for-the-badge)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=for-the-badge)](package.json)
 
 Userscript that adds **in-place translation** for posts on [Bluesky](https://bsky.app) — without leaving the feed.
 
 Compatible with [Tampermonkey](https://www.tampermonkey.net/), [Violentmonkey](https://violentmonkey.github.io/), [Greasemonkey](https://www.greasespot.net/), [ScriptCat](https://scriptcat.org/), and other managers that support the `// ==UserScript==` metadata block.
 
-> **Status:** early (`0.1.20`) — translate button, settings, cache, multi-language UI.
+> **Status:** early (`0.1.23`) — translate button, settings, cache, multi-language UI.
 > **Note:** Not affiliated with Bluesky Social PBC.
 
 ---
@@ -74,9 +74,11 @@ For hot reload during development, run `npm run dev` and install the Vite-served
 ### On Bluesky (`bsky.app`)
 
 - **Translate** button on its own row under post text (spinner while loading; click does not open the post)
+- Same button on **quoted / embedded** posts inside the feed
+- Translation shown in a result panel (smooth expand) or in place of the original text (button / hover peek / split view); links and mentions stay clickable
 - Optional **automatic** mode: translate as soon as a post is even slightly on screen (all accounts or a selected allowlist; manage via settings or the post menu)
-- Same button on **quoted / embedded** posts inside the feed (not only the outer post)
-- Translation shown in a result panel (smooth expand) or in place of the original text (Show original); click again to hide / restore; links and mentions stay clickable
+- Account **blocklist** and source-language allow/block lists (“don’t touch” filters)
+- Icons on Translate / Hide / Show original / Retry
 - Target language from settings — **Auto** follows the UI / browser locale, or pick from ~40 languages with full names and flags
 - Optional skip when the post is already in the target language
 - Works with Bluesky’s SPA navigation (scroll, route changes, infinite feed)
@@ -107,11 +109,11 @@ Open **Translator** in the left nav, or the manager menu → **Bluesky Translato
 
 | Tab | What you can change | Default |
 |-----|---------------------|---------|
-| **General** | Interface language; show Translate on posts | Auto / on |
+| **General** | Interface language | Auto |
 | **Providers** | Translation engine badge on tab; provider + API credentials / URL fields | Google |
-| **Translation** | Target language badge; mode (button / automatic); auto scope (all / selected accounts + list); display (panel / replace original); target language; skip if already target | Button / all / panel / on |
+| **Translation** | Target language badge; mode; auto scope + allowlist; replace reveal (button / hover / split); account blocklist; source language allow/block lists; display mode; target language; skip if already target | Button / all / button / panel / on |
 | **Cache** | Occupancy % badge on tab; usage meter; cache hours (`0` = off); clear cache | 24 |
-| **Debug** | Show cache hits in translation meta | off |
+| **Debug** | Cache-hit meta; translate / cache-hit statistics | off |
 | **About** | Description, repository link, author card | — |
 
 Saving closes the panel and applies immediately (nav labels and post buttons refresh).

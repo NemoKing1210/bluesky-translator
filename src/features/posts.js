@@ -11,8 +11,10 @@ import { fmt, resolveTargetLang } from '../i18n/index.js';
 import { locale, settings, t } from '../state.js';
 import { escapeHtml } from '../utils/html.js';
 import { extractLinkedText, restoreLinkedHtml } from '../utils/linked-text.js';
+import { ICONS } from '../ui/icons.js';
 import { isAutoTranslateAllowedForHandle } from './allowlist.js';
 import { resolvePostAuthorHandle } from './author.js';
+import { getLanguageSkipReason, isAccountBlocked } from './filters.js';
 
 /** Stop Bluesky’s post-open handlers without killing our own click. */
 const QUIET_POINTER_EVENTS = [
@@ -29,6 +31,8 @@ const OBSERVED_ATTR = 'data-bst-observed';
 const AUTO_DONE_ATTR = 'data-bst-auto-done';
 const AUTO_QUEUED_ATTR = 'data-bst-auto-queued';
 const ORIGINAL_HTML_ATTR = 'data-bst-original-html';
+const TRANSLATED_HTML_ATTR = 'data-bst-translated-html';
+const PEEK_BOUND_ATTR = 'data-bst-peek-bound';
 
 /** @type {IntersectionObserver | null} */
 let visibilityObserver = null;
@@ -44,9 +48,49 @@ function isReplaceMode() {
   return settings.displayMode === 'replace';
 }
 
+function replaceRevealMode() {
+  const mode = settings.replaceReveal;
+  if (mode === 'hover' || mode === 'split') return mode;
+  return 'button';
+}
+
+/** Replace + hover: peek replaces Show original — hide the toolbar button while shown. */
+function shouldHideShownReplaceButton() {
+  return isReplaceMode() && replaceRevealMode() === 'hover';
+}
+
+function syncToolbarVisibility(postEl) {
+  const bar = getToolbar(postEl);
+  if (!bar) return;
+  const btn = bar.querySelector(`[${BTN_ATTR}]`);
+  const hasResult = Boolean(bar.querySelector(`[${RESULT_ATTR}]`));
+  const hideBar = Boolean(btn?.hidden) && !hasResult;
+  bar.classList.toggle('bst-toolbar--quiet', hideBar);
+}
+
+function applyShownButton(btn, postEl) {
+  btn.dataset.bstState = 'shown';
+  if (shouldHideShownReplaceButton()) {
+    btn.hidden = true;
+    syncToolbarVisibility(postEl);
+    return;
+  }
+  btn.hidden = false;
+  setButtonLabel(btn, isReplaceMode() ? t.btnShowOriginal : t.btnHide);
+  syncToolbarVisibility(postEl);
+}
+
+function applyIdleButton(btn, postEl) {
+  btn.dataset.bstState = '';
+  btn.hidden = false;
+  setButtonLabel(btn, t.btnTranslate);
+  syncToolbarVisibility(postEl);
+}
+
 function shouldAutoTranslatePost(postEl) {
-  if (!isAutoMode() || !settings.showButtonOnPosts) return false;
+  if (!isAutoMode()) return false;
   const handle = resolvePostAuthorHandle(postEl);
+  if (isAccountBlocked(handle)) return false;
   return isAutoTranslateAllowedForHandle(handle);
 }
 
@@ -134,20 +178,89 @@ function restoreOriginalText(postEl) {
   if (stored == null) return;
   postEl.innerHTML = stored;
   postEl.removeAttribute(ORIGINAL_HTML_ATTR);
-  postEl.classList.remove('bst-text--translated');
+  postEl.removeAttribute(TRANSLATED_HTML_ATTR);
+  postEl.classList.remove(
+    'bst-text--translated',
+    'bst-text--split',
+    'bst-text--peeking',
+    'bst-text--hover-peek'
+  );
+}
+
+function paintTranslatedBody(postEl, translatedHtml) {
+  const reveal = replaceRevealMode();
+  const original = postEl.getAttribute(ORIGINAL_HTML_ATTR) || '';
+  postEl.setAttribute(TRANSLATED_HTML_ATTR, translatedHtml);
+  postEl.classList.remove('bst-text--peeking', 'bst-text--split', 'bst-text--hover-peek');
+
+  if (reveal === 'split') {
+    postEl.innerHTML =
+      `<div class="bst-split" data-bst-split="1">` +
+      `<div class="bst-split__pane">` +
+      `<div class="bst-split__label">${escapeHtml(t.originalLabel)}</div>` +
+      `<div class="bst-split__body">${original}</div>` +
+      `</div>` +
+      `<div class="bst-split__pane bst-split__pane--translated">` +
+      `<div class="bst-split__label">${escapeHtml(t.translationLabel)}</div>` +
+      `<div class="bst-split__body">${translatedHtml}</div>` +
+      `</div>` +
+      `</div>`;
+    postEl.classList.add('bst-text--translated', 'bst-text--split');
+    return;
+  }
+
+  postEl.innerHTML = translatedHtml;
+  postEl.classList.add('bst-text--translated');
+  if (reveal === 'hover') {
+    postEl.classList.add('bst-text--hover-peek');
+    bindReplaceHover(postEl);
+  }
 }
 
 function applyReplacedText(postEl, translated, links = []) {
   if (!postEl.hasAttribute(ORIGINAL_HTML_ATTR)) {
     postEl.setAttribute(ORIGINAL_HTML_ATTR, postEl.innerHTML);
   }
-  postEl.innerHTML = restoreLinkedHtml(translated, links);
-  postEl.classList.add('bst-text--translated');
+  paintTranslatedBody(postEl, restoreLinkedHtml(translated, links));
+}
+
+function bindReplaceHover(postEl) {
+  if (postEl.getAttribute(PEEK_BOUND_ATTR) === '1') return;
+  postEl.setAttribute(PEEK_BOUND_ATTR, '1');
+
+  postEl.addEventListener('mouseenter', () => {
+    if (!isReplaceMode() || replaceRevealMode() !== 'hover') return;
+    if (!postEl.classList.contains('bst-text--translated')) return;
+    if (postEl.classList.contains('bst-text--split')) return;
+    const original = postEl.getAttribute(ORIGINAL_HTML_ATTR);
+    if (original == null) return;
+    postEl.innerHTML = original;
+    postEl.classList.add('bst-text--peeking');
+  });
+
+  postEl.addEventListener('mouseleave', () => {
+    if (!postEl.classList.contains('bst-text--peeking')) return;
+    const translated = postEl.getAttribute(TRANSLATED_HTML_ATTR);
+    if (translated == null) {
+      postEl.classList.remove('bst-text--peeking');
+      return;
+    }
+    postEl.innerHTML = translated;
+    postEl.classList.remove('bst-text--peeking');
+    postEl.classList.add('bst-text--translated', 'bst-text--hover-peek');
+  });
 }
 
 function clearDisplay(postEl) {
   restoreOriginalText(postEl);
   hideResult(postEl, { remove: true });
+}
+
+function buttonIconForLabel(label) {
+  if (label === t.btnShowOriginal) return ICONS.original;
+  if (label === t.btnHide) return ICONS.hide;
+  if (label === t.btnRetry) return ICONS.retry;
+  return ICONS.translate;
 }
 
 /**
@@ -219,7 +332,7 @@ function ensureButton(postEl) {
   btn.type = 'button';
   btn.className = 'bst-btn';
   btn.setAttribute(BTN_ATTR, '1');
-  btn.textContent = t.btnTranslate;
+  setButtonLabel(btn, t.btnTranslate);
   bar.appendChild(btn);
   return btn;
 }
@@ -240,7 +353,7 @@ function buildResultInnerHtml({ translated, detected, fromCache, error, links })
   if (error) {
     return (
       `<div class="bst-result__error">${escapeHtml(error)}</div>` +
-      `<button type="button" class="bst-btn bst-btn--retry" data-bst-retry="1">${escapeHtml(t.btnRetry)}</button>`
+      `<button type="button" class="bst-btn bst-btn--retry" data-bst-retry="1">${ICONS.retry}<span class="bst-btn__label">${escapeHtml(t.btnRetry)}</span></button>`
     );
   }
 
@@ -328,10 +441,12 @@ function setButtonLabel(btn, label, { loading = false } = {}) {
     btn.innerHTML =
       `<span class="bst-btn__spinner" aria-hidden="true"></span>` +
       `<span class="bst-btn__label">${escapeHtml(label)}</span>`;
-  } else {
-    btn.removeAttribute('aria-busy');
-    btn.textContent = label;
+    return;
   }
+  btn.removeAttribute('aria-busy');
+  btn.innerHTML =
+    `${buttonIconForLabel(label)}` +
+    `<span class="bst-btn__label">${escapeHtml(label)}</span>`;
 }
 
 async function runTranslate(postEl, btn) {
@@ -343,11 +458,25 @@ async function runTranslate(postEl, btn) {
 
   const targetLang = resolveTargetLang(settings.targetLang, locale);
   clearDisplay(postEl);
+  btn.hidden = false;
+  syncToolbarVisibility(postEl);
   setButtonLabel(btn, t.translating, { loading: true });
 
   try {
     const result = await translateText(text, targetLang);
-    if (
+    const langSkip = getLanguageSkipReason(result.detectedSourceLang);
+    if (langSkip) {
+      showResult(postEl, {
+        translated: langSkip === 'blocked' ? t.langSkippedBlocked : t.langSkippedNotAllowed,
+        detected: result.detectedSourceLang,
+        fromCache: result.fromCache,
+        panelOnly: true,
+      });
+      btn.hidden = false;
+      setButtonLabel(btn, t.btnHide);
+      btn.dataset.bstState = 'shown';
+      syncToolbarVisibility(postEl);
+    } else if (
       settings.autoDetectSkipSameLang &&
       result.detectedSourceLang &&
       result.detectedSourceLang.toLowerCase() === targetLang.toLowerCase() &&
@@ -359,18 +488,19 @@ async function runTranslate(postEl, btn) {
         fromCache: result.fromCache,
         panelOnly: true,
       });
+      btn.hidden = false;
       setButtonLabel(btn, t.btnHide);
+      btn.dataset.bstState = 'shown';
+      syncToolbarVisibility(postEl);
     } else {
-      const replaced = isReplaceMode();
       showResult(postEl, {
         translated: result.text,
         detected: result.detectedSourceLang,
         fromCache: result.fromCache,
         links,
       });
-      setButtonLabel(btn, replaced ? t.btnShowOriginal : t.btnHide);
+      applyShownButton(btn, postEl);
     }
-    btn.dataset.bstState = 'shown';
     postEl.setAttribute(AUTO_DONE_ATTR, '1');
   } catch (err) {
     if (settings.debugMode) {
@@ -379,8 +509,7 @@ async function runTranslate(postEl, btn) {
     const msg =
       err?.message === 'missing-config' ? t.errProviderConfig : t.errNetwork;
     showResult(postEl, { error: msg });
-    setButtonLabel(btn, t.btnTranslate);
-    btn.dataset.bstState = '';
+    applyIdleButton(btn, postEl);
     postEl.setAttribute(AUTO_DONE_ATTR, '1');
   }
 }
@@ -389,8 +518,7 @@ function onTranslateClick(postEl, btn) {
   if (btn.classList.contains('is-loading')) return;
   if (btn.dataset.bstState === 'shown') {
     clearDisplay(postEl);
-    btn.dataset.bstState = '';
-    setButtonLabel(btn, t.btnTranslate);
+    applyIdleButton(btn, postEl);
     postEl.setAttribute(AUTO_DONE_ATTR, '1');
     return;
   }
@@ -474,6 +602,17 @@ function observeForAuto(postEl) {
 }
 
 function enhancePost(el) {
+  const handle = resolvePostAuthorHandle(el);
+  if (isAccountBlocked(handle)) {
+    clearDisplay(el);
+    getToolbar(el)?.remove();
+    el.removeAttribute(POST_ATTR);
+    el.removeAttribute(OBSERVED_ATTR);
+    el.removeAttribute(AUTO_DONE_ATTR);
+    el.removeAttribute(AUTO_QUEUED_ATTR);
+    return;
+  }
+
   if (el.hasAttribute(POST_ATTR)) {
     // Re-place / re-bind if an older build left the toolbar between text and media.
     const bar = getToolbar(el);
@@ -484,7 +623,6 @@ function enhancePost(el) {
     observeForAuto(el);
     return;
   }
-  if (!settings.showButtonOnPosts) return;
 
   const text = extractPostText(el);
   if (!text) return;
@@ -495,12 +633,6 @@ function enhancePost(el) {
 }
 
 export function scanPosts() {
-  if (!settings.showButtonOnPosts) {
-    stopAutoTranslate();
-    document.querySelectorAll(`[${TOOLBAR_ATTR}]`).forEach((el) => el.remove());
-    return;
-  }
-
   if (!isAutoMode()) {
     stopAutoTranslate();
   }
@@ -514,12 +646,10 @@ export function scanPosts() {
     });
   }
 
-  document.querySelectorAll(`[${BTN_ATTR}]`).forEach((btn) => {
-    if (btn.classList.contains('is-loading')) return;
-    if (btn.dataset.bstState === 'shown') {
-      setButtonLabel(btn, isReplaceMode() ? t.btnShowOriginal : t.btnHide);
-    } else {
-      setButtonLabel(btn, t.btnTranslate);
-    }
+  document.querySelectorAll(`[${POST_ATTR}]`).forEach((postEl) => {
+    const btn = getToolbar(postEl)?.querySelector(`[${BTN_ATTR}]`);
+    if (!btn || btn.classList.contains('is-loading')) return;
+    if (btn.dataset.bstState === 'shown') applyShownButton(btn, postEl);
+    else applyIdleButton(btn, postEl);
   });
 }

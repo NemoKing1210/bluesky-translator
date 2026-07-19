@@ -15,9 +15,11 @@ import {
 import { fmt, LOCALE_FLAG_AUTO, LOCALE_FLAGS, LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES } from '../i18n/index.js';
 import { getProvider, TRANSLATION_PROVIDERS } from '../providers/registry.js';
 import { saveSettings } from '../settings.js';
+import { getCacheHitRate, getTranslateStats, resetTranslateStats } from '../stats.js';
 import { reloadRuntimeSettings, settings, t } from '../state.js';
 import { formatHandleDisplay, normalizeHandle } from '../utils/handle.js';
 import { escapeAttr, escapeHtml } from '../utils/html.js';
+import { normalizeLangCode } from '../utils/lists.js';
 import { scanPosts } from './posts.js';
 import { showToast } from './toast.js';
 
@@ -334,19 +336,28 @@ function activateSettingsTab(dialog, tabId) {
   });
 }
 
-function buildAllowlistItemsHtml(list) {
+function langLabel(code) {
+  const normalized = normalizeLangCode(code);
+  const row = TARGET_LANGUAGES.find(
+    (l) => normalizeLangCode(l.code) === normalized
+  );
+  if (!row) return code;
+  return `${row.flag} ${row.name}`;
+}
+
+function buildHandleListHtml(list, emptyKey) {
   const handles = Array.isArray(list) ? list : [];
   if (!handles.length) {
-    return `<p class="bst-hint bst-allowlist__empty">${escapeHtml(t.allowlistEmpty)}</p>`;
+    return `<p class="bst-hint bst-allowlist__empty">${escapeHtml(t[emptyKey] || t.allowlistEmpty)}</p>`;
   }
   return `
-    <ul class="bst-allowlist" data-bst-allowlist>
+    <ul class="bst-allowlist">
       ${handles
         .map(
           (handle) => `
-        <li class="bst-allowlist__item" data-bst-allowlist-item data-handle="${escapeAttr(handle)}">
+        <li class="bst-allowlist__item" data-bst-handle-item data-handle="${escapeAttr(handle)}">
           <span class="bst-allowlist__handle">${escapeHtml(formatHandleDisplay(handle))}</span>
-          <button type="button" class="bst-allowlist__remove" data-bst-allowlist-remove="${escapeAttr(handle)}" aria-label="${escapeAttr(t.allowlistRemove)}">×</button>
+          <button type="button" class="bst-allowlist__remove" data-bst-handle-remove="${escapeAttr(handle)}" aria-label="${escapeAttr(t.allowlistRemove)}">×</button>
         </li>`
         )
         .join('')}
@@ -354,27 +365,93 @@ function buildAllowlistItemsHtml(list) {
   `;
 }
 
-function readAllowlistFromForm(form) {
-  return [...form.querySelectorAll('[data-bst-allowlist-item]')]
+function buildLangListHtml(list, emptyKey) {
+  const codes = Array.isArray(list) ? list : [];
+  if (!codes.length) {
+    return `<p class="bst-hint bst-allowlist__empty">${escapeHtml(t[emptyKey] || t.langListEmpty)}</p>`;
+  }
+  return `
+    <ul class="bst-allowlist">
+      ${codes
+        .map(
+          (code) => `
+        <li class="bst-allowlist__item" data-bst-lang-item data-code="${escapeAttr(code)}">
+          <span class="bst-allowlist__handle">${escapeHtml(langLabel(code))}</span>
+          <button type="button" class="bst-allowlist__remove" data-bst-lang-remove="${escapeAttr(code)}" aria-label="${escapeAttr(t.allowlistRemove)}">×</button>
+        </li>`
+        )
+        .join('')}
+    </ul>
+  `;
+}
+
+function readHandleListFromHost(form, hostSel) {
+  return [...form.querySelectorAll(`${hostSel} [data-bst-handle-item]`)]
     .map((el) => normalizeHandle(el.getAttribute('data-handle')))
     .filter(Boolean);
 }
 
-function paintAllowlist(form, list) {
-  const host = form.querySelector('[data-bst-allowlist-host]');
-  if (!host) return;
-  host.innerHTML = buildAllowlistItemsHtml(list);
+function readLangListFromHost(form, hostSel) {
+  return [...form.querySelectorAll(`${hostSel} [data-bst-lang-item]`)]
+    .map((el) => normalizeLangCode(el.getAttribute('data-code')))
+    .filter(Boolean);
 }
 
-function syncAutoOptionVisibility(dialog) {
+function paintHandleList(form, hostSel, list, emptyKey) {
+  const host = form.querySelector(hostSel);
+  if (!host) return;
+  host.innerHTML = buildHandleListHtml(list, emptyKey);
+}
+
+function paintLangList(form, hostSel, list, emptyKey) {
+  const host = form.querySelector(hostSel);
+  if (!host) return;
+  host.innerHTML = buildLangListHtml(list, emptyKey);
+}
+
+function langPickerOptions(exclude = []) {
+  const blocked = new Set(exclude.map(normalizeLangCode));
+  return TARGET_LANGUAGES.map((l) => {
+    const code = normalizeLangCode(l.code);
+    if (blocked.has(code)) return '';
+    return `<option value="${escapeAttr(code)}">${escapeHtml(`${l.flag} ${l.name}`)}</option>`;
+  }).join('');
+}
+
+function buildStatsHtml(stats = getTranslateStats()) {
+  const rate = getCacheHitRate(stats);
+  return `
+    <div class="bst-stats" data-bst-stats>
+      <div class="bst-stats__title">${escapeHtml(t.statsTitle)}</div>
+      <ul class="bst-stats__list">
+        <li>${escapeHtml(fmt(t.statsTranslations, { count: stats.translations }))}</li>
+        <li>${escapeHtml(fmt(t.statsCacheHits, { count: stats.cacheHits }))}</li>
+        <li>${escapeHtml(fmt(t.statsCacheMisses, { count: stats.cacheMisses }))}</li>
+        <li>${escapeHtml(fmt(t.statsHitRate, { rate }))}</li>
+      </ul>
+      <button type="button" class="bst-settings__ghost" data-bst-stats-reset="1">${escapeHtml(t.statsReset)}</button>
+    </div>
+  `;
+}
+
+function paintStats(dialog) {
+  const host = dialog?.querySelector('[data-bst-stats-host]');
+  if (!host) return;
+  host.innerHTML = buildStatsHtml();
+}
+
+function syncOptionVisibility(dialog) {
   const form = dialog?.querySelector('form');
   if (!form) return;
   const mode = form.translateMode?.value === 'auto' ? 'auto' : 'button';
   const scope = form.autoScope?.value === 'allowlist' ? 'allowlist' : 'all';
+  const display = form.displayMode?.value === 'replace' ? 'replace' : 'panel';
   const autoOpts = form.querySelector('[data-bst-auto-options]');
   const allowPanel = form.querySelector('[data-bst-allowlist-panel]');
+  const replaceOpts = form.querySelector('[data-bst-replace-options]');
   if (autoOpts) autoOpts.hidden = mode !== 'auto';
   if (allowPanel) allowPanel.hidden = !(mode === 'auto' && scope === 'allowlist');
+  if (replaceOpts) replaceOpts.hidden = display !== 'replace';
 }
 
 function readForm(form) {
@@ -405,9 +482,15 @@ function readForm(form) {
     autoDetectSkipSameLang: form.autoDetectSkipSameLang.checked,
     translateMode: form.translateMode?.value === 'auto' ? 'auto' : 'button',
     displayMode: form.displayMode?.value === 'replace' ? 'replace' : 'panel',
+    replaceReveal:
+      form.replaceReveal?.value === 'hover' || form.replaceReveal?.value === 'split'
+        ? form.replaceReveal.value
+        : 'button',
     autoScope: form.autoScope?.value === 'allowlist' ? 'allowlist' : 'all',
-    autoAllowlist: readAllowlistFromForm(form),
-    showButtonOnPosts: form.showButtonOnPosts.checked,
+    autoAllowlist: readHandleListFromHost(form, '[data-bst-allowlist-host]'),
+    accountBlocklist: readHandleListFromHost(form, '[data-bst-blocklist-host]'),
+    langAllowlist: readLangListFromHost(form, '[data-bst-lang-allow-host]'),
+    langBlocklist: readLangListFromHost(form, '[data-bst-lang-block-host]'),
     debugMode: form.debugMode.checked,
   };
 }
@@ -469,10 +552,6 @@ export function openSettings() {
               <span>${escapeHtml(t.settingsUiLocale)}</span>
               <select name="uiLocale">${localeOptions(settings.uiLocale)}</select>
             </label>
-            <label class="bst-check">
-              <input name="showButtonOnPosts" type="checkbox"${settings.showButtonOnPosts ? ' checked' : ''} />
-              <span>${escapeHtml(t.settingsShowButtons)}</span>
-            </label>
           </div>
           <div ${panelAttrs('providers', activeTab)}>
             <label class="bst-field">
@@ -501,6 +580,17 @@ export function openSettings() {
               </select>
             </label>
             <p class="bst-hint">${escapeHtml(t.settingsDisplayModeHint)}</p>
+            <div class="bst-replace-options" data-bst-replace-options${settings.displayMode === 'replace' ? '' : ' hidden'}>
+              <label class="bst-field">
+                <span>${escapeHtml(t.settingsReplaceReveal)}</span>
+                <select name="replaceReveal">
+                  <option value="button"${settings.replaceReveal !== 'hover' && settings.replaceReveal !== 'split' ? ' selected' : ''}>${escapeHtml(t.replaceRevealButton)}</option>
+                  <option value="hover"${settings.replaceReveal === 'hover' ? ' selected' : ''}>${escapeHtml(t.replaceRevealHover)}</option>
+                  <option value="split"${settings.replaceReveal === 'split' ? ' selected' : ''}>${escapeHtml(t.replaceRevealSplit)}</option>
+                </select>
+              </label>
+              <p class="bst-hint">${escapeHtml(t.settingsReplaceRevealHint)}</p>
+            </div>
             <div class="bst-auto-options" data-bst-auto-options${settings.translateMode === 'auto' ? '' : ' hidden'}>
               <label class="bst-field">
                 <span>${escapeHtml(t.settingsAutoScope)}</span>
@@ -525,9 +615,48 @@ export function openSettings() {
                   />
                   <button type="button" class="bst-settings__ghost" data-bst-allowlist-add="1">${escapeHtml(t.allowlistAdd)}</button>
                 </div>
-                <div data-bst-allowlist-host>${buildAllowlistItemsHtml(settings.autoAllowlist)}</div>
+                <div data-bst-allowlist-host>${buildHandleListHtml(settings.autoAllowlist, 'allowlistEmpty')}</div>
                 <p class="bst-hint">${escapeHtml(t.settingsAllowlistHint)}</p>
               </div>
+            </div>
+            <div class="bst-filter-block">
+              <label class="bst-field">
+                <span>${escapeHtml(t.settingsAccountBlocklist)}</span>
+              </label>
+              <p class="bst-hint">${escapeHtml(t.settingsAccountBlocklistHint)}</p>
+              <div class="bst-allowlist-add">
+                <input
+                  name="blocklistInput"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="${escapeAttr(t.allowlistPlaceholder)}"
+                />
+                <button type="button" class="bst-settings__ghost" data-bst-blocklist-add="1">${escapeHtml(t.allowlistAdd)}</button>
+              </div>
+              <div data-bst-blocklist-host>${buildHandleListHtml(settings.accountBlocklist, 'blocklistEmpty')}</div>
+            </div>
+            <div class="bst-filter-block">
+              <label class="bst-field">
+                <span>${escapeHtml(t.settingsLangAllowlist)}</span>
+              </label>
+              <p class="bst-hint">${escapeHtml(t.settingsLangAllowlistHint)}</p>
+              <div class="bst-allowlist-add">
+                <select name="langAllowInput">${langPickerOptions(settings.langAllowlist)}</select>
+                <button type="button" class="bst-settings__ghost" data-bst-lang-allow-add="1">${escapeHtml(t.langListAdd)}</button>
+              </div>
+              <div data-bst-lang-allow-host>${buildLangListHtml(settings.langAllowlist, 'langListEmpty')}</div>
+            </div>
+            <div class="bst-filter-block">
+              <label class="bst-field">
+                <span>${escapeHtml(t.settingsLangBlocklist)}</span>
+              </label>
+              <p class="bst-hint">${escapeHtml(t.settingsLangBlocklistHint)}</p>
+              <div class="bst-allowlist-add">
+                <select name="langBlockInput">${langPickerOptions(settings.langBlocklist)}</select>
+                <button type="button" class="bst-settings__ghost" data-bst-lang-block-add="1">${escapeHtml(t.langListAdd)}</button>
+              </div>
+              <div data-bst-lang-block-host>${buildLangListHtml(settings.langBlocklist, 'langListEmpty')}</div>
             </div>
             <label class="bst-field">
               <span>${escapeHtml(t.settingsTargetLang)}</span>
@@ -553,6 +682,7 @@ export function openSettings() {
               <span>${escapeHtml(t.settingsDebug)}</span>
             </label>
             <p class="bst-hint">${escapeHtml(t.settingsDebugHint)}</p>
+            <div data-bst-stats-host>${buildStatsHtml()}</div>
           </div>
           <div ${panelAttrs('about', activeTab)}>
             <p class="bst-about__desc">${escapeHtml(t.aboutDescription)}</p>
@@ -669,21 +799,25 @@ export function openSettings() {
   });
 
   form.querySelector('select[name="translateMode"]')?.addEventListener('change', () => {
-    syncAutoOptionVisibility(dialog);
+    syncOptionVisibility(dialog);
   });
 
   form.querySelector('select[name="autoScope"]')?.addEventListener('change', () => {
-    syncAutoOptionVisibility(dialog);
+    syncOptionVisibility(dialog);
   });
 
-  form.querySelector('[data-bst-allowlist-add]')?.addEventListener('click', () => {
-    const input = form.querySelector('input[name="allowlistInput"]');
+  form.querySelector('select[name="displayMode"]')?.addEventListener('change', () => {
+    syncOptionVisibility(dialog);
+  });
+
+  function addHandleToHost(inputName, hostSel, addBtnSel, emptyKey) {
+    const input = form.querySelector(`input[name="${inputName}"]`);
     const handle = normalizeHandle(input?.value);
     if (!handle) {
       showToast(t.allowlistInvalid, { type: 'warning' });
       return;
     }
-    const list = readAllowlistFromForm(form);
+    const list = readHandleListFromHost(form, hostSel);
     if (list.includes(handle)) {
       showToast(fmt(t.allowlistExists, { handle: formatHandleDisplay(handle) }), {
         type: 'info',
@@ -692,9 +826,28 @@ export function openSettings() {
     }
     list.push(handle);
     list.sort();
-    paintAllowlist(form, list);
+    paintHandleList(form, hostSel, list, emptyKey);
     if (input) input.value = '';
     input?.focus();
+  }
+
+  function addLangToHost(selectName, hostSel, emptyKey) {
+    const select = form.querySelector(`select[name="${selectName}"]`);
+    const code = normalizeLangCode(select?.value);
+    if (!code) return;
+    const list = readLangListFromHost(form, hostSel);
+    if (list.includes(code)) {
+      showToast(fmt(t.langListExists, { lang: langLabel(code) }), { type: 'info' });
+      return;
+    }
+    list.push(code);
+    list.sort();
+    paintLangList(form, hostSel, list, emptyKey);
+    if (select) select.innerHTML = langPickerOptions(list);
+  }
+
+  form.querySelector('[data-bst-allowlist-add]')?.addEventListener('click', () => {
+    addHandleToHost('allowlistInput', '[data-bst-allowlist-host]', null, 'allowlistEmpty');
   });
 
   form.querySelector('input[name="allowlistInput"]')?.addEventListener('keydown', (e) => {
@@ -703,12 +856,60 @@ export function openSettings() {
     form.querySelector('[data-bst-allowlist-add]')?.click();
   });
 
+  form.querySelector('[data-bst-blocklist-add]')?.addEventListener('click', () => {
+    addHandleToHost('blocklistInput', '[data-bst-blocklist-host]', null, 'blocklistEmpty');
+  });
+
+  form.querySelector('input[name="blocklistInput"]')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    form.querySelector('[data-bst-blocklist-add]')?.click();
+  });
+
+  form.querySelector('[data-bst-lang-allow-add]')?.addEventListener('click', () => {
+    addLangToHost('langAllowInput', '[data-bst-lang-allow-host]', 'langListEmpty');
+  });
+
+  form.querySelector('[data-bst-lang-block-add]')?.addEventListener('click', () => {
+    addLangToHost('langBlockInput', '[data-bst-lang-block-host]', 'langListEmpty');
+  });
+
   form.addEventListener('click', (e) => {
-    const btn = e.target?.closest?.('[data-bst-allowlist-remove]');
-    if (!btn || !form.contains(btn)) return;
-    const handle = normalizeHandle(btn.getAttribute('data-bst-allowlist-remove'));
-    const list = readAllowlistFromForm(form).filter((item) => item !== handle);
-    paintAllowlist(form, list);
+    const handleBtn = e.target?.closest?.('[data-bst-handle-remove]');
+    if (handleBtn && form.contains(handleBtn)) {
+      const handle = normalizeHandle(handleBtn.getAttribute('data-bst-handle-remove'));
+      const host = handleBtn.closest('[data-bst-allowlist-host], [data-bst-blocklist-host]');
+      if (!host) return;
+      const hostSel = host.hasAttribute('data-bst-allowlist-host')
+        ? '[data-bst-allowlist-host]'
+        : '[data-bst-blocklist-host]';
+      const emptyKey =
+        hostSel === '[data-bst-allowlist-host]' ? 'allowlistEmpty' : 'blocklistEmpty';
+      const list = readHandleListFromHost(form, hostSel).filter((item) => item !== handle);
+      paintHandleList(form, hostSel, list, emptyKey);
+      return;
+    }
+
+    const langBtn = e.target?.closest?.('[data-bst-lang-remove]');
+    if (langBtn && form.contains(langBtn)) {
+      const code = normalizeLangCode(langBtn.getAttribute('data-bst-lang-remove'));
+      const host = langBtn.closest('[data-bst-lang-allow-host], [data-bst-lang-block-host]');
+      if (!host) return;
+      const isAllow = host.hasAttribute('data-bst-lang-allow-host');
+      const hostSel = isAllow ? '[data-bst-lang-allow-host]' : '[data-bst-lang-block-host]';
+      const selectName = isAllow ? 'langAllowInput' : 'langBlockInput';
+      const list = readLangListFromHost(form, hostSel).filter((item) => item !== code);
+      paintLangList(form, hostSel, list, 'langListEmpty');
+      const select = form.querySelector(`select[name="${selectName}"]`);
+      if (select) select.innerHTML = langPickerOptions(list);
+      return;
+    }
+
+    if (e.target?.closest?.('[data-bst-stats-reset]')) {
+      resetTranslateStats();
+      paintStats(dialog);
+      showToast(t.statsResetDone, { type: 'info' });
+    }
   });
 
   form.querySelector('select[name="provider"]')?.addEventListener('change', () => {
@@ -737,5 +938,6 @@ export function openSettings() {
   requestAnimationFrame(() => {
     syncTabBadges(dialog);
     syncTabInk(dialog);
+    syncOptionVisibility(dialog);
   });
 }

@@ -1,5 +1,6 @@
 import { getCached, setCached } from '../cache.js';
 import { getProvider, isKnownProvider } from '../providers/registry.js';
+import { recordTranslation } from '../stats.js';
 import { inflight, settings } from '../state.js';
 import { translateWithDeepL } from './providers/deepl.js';
 import { translateWithGoogle } from './providers/google.js';
@@ -55,12 +56,14 @@ export async function translateText(text, targetLang) {
   const key = cacheKey(providerId, trimmed, targetLang);
   const hit = getCached(key);
   if (hit && typeof hit === 'object' && hit.text) {
-    return {
+    const result = {
       text: hit.text,
       detectedSourceLang: hit.detectedSourceLang || null,
       fromCache: true,
       provider: providerId,
     };
+    recordTranslation({ fromCache: true });
+    return result;
   }
 
   if (inflight.has(key)) return inflight.get(key);
@@ -77,6 +80,7 @@ export async function translateText(text, targetLang) {
       text: result.text,
       detectedSourceLang: result.detectedSourceLang,
     });
+    recordTranslation({ fromCache: false });
     return result;
   })();
 

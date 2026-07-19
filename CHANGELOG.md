@@ -5,6 +5,27 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.23] - 2026-07-19
+
+### Removed
+
+- Setting "Show Translate on posts" (buttons always follow mode / filters)
+
+## [0.1.22] - 2026-07-19
+
+### Changed
+
+- Replace + hover mode hides the Translate / Show original button after a successful translation
+
+## [0.1.21] - 2026-07-19
+
+### Added
+
+- Replace mode: original on hover or split view (original + translation)
+- Account blocklist and source-language allow/block lists
+- Debug stats: translated count, cache hits/misses, hit rate
+- Icons on Translate / Hide / Show original / Retry buttons
+
 ## [0.1.20] - 2026-07-19
 
 ### Added

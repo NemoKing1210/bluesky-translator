@@ -4,12 +4,9 @@ import {
 } from '$';
 import { DEFAULT_SETTINGS, SETTINGS_KEY } from './constants.js';
 import { isKnownProvider, mergeProviderConfig } from './providers/registry.js';
-import { normalizeHandle } from './utils/handle.js';
+import { normalizeHandleList, normalizeLangList } from './utils/lists.js';
 
-function normalizeAllowlist(raw) {
-  if (!Array.isArray(raw)) return [];
-  return [...new Set(raw.map(normalizeHandle).filter(Boolean))].sort();
-}
+const REPLACE_REVEAL = new Set(['button', 'hover', 'split']);
 
 function normalizeSettings(raw) {
   const base = raw && typeof raw === 'object' ? raw : {};
@@ -18,8 +15,14 @@ function normalizeSettings(raw) {
   merged.providerConfig = mergeProviderConfig(base.providerConfig);
   merged.translateMode = merged.translateMode === 'auto' ? 'auto' : 'button';
   merged.displayMode = merged.displayMode === 'replace' ? 'replace' : 'panel';
+  merged.replaceReveal = REPLACE_REVEAL.has(merged.replaceReveal)
+    ? merged.replaceReveal
+    : 'button';
   merged.autoScope = merged.autoScope === 'allowlist' ? 'allowlist' : 'all';
-  merged.autoAllowlist = normalizeAllowlist(merged.autoAllowlist);
+  merged.autoAllowlist = normalizeHandleList(merged.autoAllowlist);
+  merged.accountBlocklist = normalizeHandleList(merged.accountBlocklist);
+  merged.langAllowlist = normalizeLangList(merged.langAllowlist);
+  merged.langBlocklist = normalizeLangList(merged.langBlocklist);
   return merged;
 }
 
