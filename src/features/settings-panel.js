@@ -1,4 +1,4 @@
-import { clearCache } from '../cache.js';
+import { buildCacheMeterHtml, cacheFillLevel, clearCache, getCacheUsageStats, paintCacheMeter } from '../cache.js';
 import {
   AUTHOR_AVATAR_URL,
   AUTHOR_EMAIL,
@@ -135,6 +135,43 @@ function localeOptions(selected) {
   return opts.join('');
 }
 
+function resolveTargetLangEntry(code) {
+  if (!code || code === 'auto') return null;
+  return (
+    TARGET_LANGUAGES.find((lang) => lang.code === code) ||
+    (code === 'zh' ? TARGET_LANGUAGES.find((lang) => lang.code === 'zh-CN') : null) ||
+    null
+  );
+}
+
+function translationBadgeLabel(targetLang) {
+  if (!targetLang || targetLang === 'auto') {
+    return `${LOCALE_FLAG_AUTO} ${t.badgeLangAuto}`;
+  }
+  const lang = resolveTargetLangEntry(targetLang);
+  if (!lang) return targetLang;
+  return `${lang.flag} ${lang.code}`;
+}
+
+function cacheBadgeLabel(stats) {
+  const s = stats || getCacheUsageStats();
+  if (!s.enabled) return t.badgeCacheOff;
+  const pct = s.pct < 10 && s.pct > 0 ? s.pct.toFixed(1) : String(Math.round(s.pct));
+  return `${pct}%`;
+}
+
+function tabBadgeHtml(id) {
+  if (id === 'translation') {
+    return `<span class="bst-settings__badge" data-bst-tab-badge="translation">${escapeHtml(translationBadgeLabel(settings.targetLang))}</span>`;
+  }
+  if (id === 'cache') {
+    const stats = getCacheUsageStats();
+    const level = cacheFillLevel(stats);
+    return `<span class="bst-settings__badge bst-settings__badge--cache" data-bst-tab-badge="cache" data-level="${escapeAttr(level)}">${escapeHtml(cacheBadgeLabel(stats))}</span>`;
+  }
+  return '';
+}
+
 function buildTabsHtml(activeId) {
   const tabs = SETTINGS_TABS.map(({ id, labelKey }) => {
     const active = id === activeId;
@@ -148,10 +185,30 @@ function buildTabsHtml(activeId) {
         aria-selected="${active ? 'true' : 'false'}"
         aria-controls="bst-panel-${escapeAttr(id)}"
         tabindex="${active ? '0' : '-1'}"
-      >${escapeHtml(t[labelKey])}</button>
+      ><span class="bst-settings__tab-label">${escapeHtml(t[labelKey])}</span>${tabBadgeHtml(id)}</button>
     `;
   }).join('');
   return `<span class="bst-settings__tab-ink" aria-hidden="true"></span>${tabs}`;
+}
+
+function syncTabBadges(dialog, draft = {}) {
+  const targetLang = draft.targetLang ?? settings.targetLang;
+  const trBadge = dialog.querySelector('[data-bst-tab-badge="translation"]');
+  if (trBadge) trBadge.textContent = translationBadgeLabel(targetLang);
+
+  const prevHours = settings.cacheHours;
+  if (draft.cacheHours != null && Number.isFinite(draft.cacheHours)) {
+    settings.cacheHours = draft.cacheHours;
+  }
+  const stats = getCacheUsageStats();
+  settings.cacheHours = prevHours;
+
+  const cacheBadge = dialog.querySelector('[data-bst-tab-badge="cache"]');
+  if (cacheBadge) {
+    cacheBadge.textContent = cacheBadgeLabel(stats);
+    cacheBadge.dataset.level = cacheFillLevel(stats);
+  }
+  syncTabInk(dialog);
 }
 
 function panelAttrs(id, activeId) {
@@ -252,12 +309,13 @@ export function openSettings() {
             </label>
           </div>
           <div ${panelAttrs('cache', activeTab)}>
+            ${buildCacheMeterHtml()}
             <label class="bst-field">
               <span>${escapeHtml(t.settingsCacheHours)}</span>
               <input name="cacheHours" type="number" min="0" max="${CACHE_HOURS_MAX}" step="1" value="${escapeAttr(String(settings.cacheHours))}" />
             </label>
             <p class="bst-hint">${escapeHtml(t.settingsCacheHint)}</p>
-            <button type="button" class="bst-settings__ghost" data-bst-clear="1">${escapeHtml(t.settingsClearCache)}</button>
+            <button type="button" class="bst-settings__ghost bst-settings__ghost--danger" data-bst-clear="1">${escapeHtml(t.settingsClearCache)}</button>
           </div>
           <div ${panelAttrs('debug', activeTab)}>
             <label class="bst-check">
@@ -349,7 +407,32 @@ export function openSettings() {
 
   root.querySelector('[data-bst-clear]')?.addEventListener('click', () => {
     clearCache();
+    paintCacheMeter(dialog);
+    syncTabBadges(dialog, {
+      cacheHours: Number(form.cacheHours?.value),
+      targetLang: form.targetLang?.value,
+    });
     showToast(t.settingsCacheCleared, { type: 'info' });
+  });
+
+  const cacheHoursInput = form.querySelector('input[name="cacheHours"]');
+  cacheHoursInput?.addEventListener('input', () => {
+    const draft = Number(cacheHoursInput.value);
+    const prev = settings.cacheHours;
+    if (Number.isFinite(draft) && draft >= 0) settings.cacheHours = draft;
+    paintCacheMeter(dialog);
+    settings.cacheHours = prev;
+    syncTabBadges(dialog, {
+      cacheHours: Number.isFinite(draft) ? draft : settings.cacheHours,
+      targetLang: form.targetLang?.value,
+    });
+  });
+
+  form.querySelector('select[name="targetLang"]')?.addEventListener('change', () => {
+    syncTabBadges(dialog, {
+      targetLang: form.targetLang.value,
+      cacheHours: Number(form.cacheHours?.value),
+    });
   });
 
   document.addEventListener(
@@ -364,5 +447,8 @@ export function openSettings() {
   );
 
   (document.body || document.documentElement).appendChild(root);
-  requestAnimationFrame(() => syncTabInk(dialog));
+  requestAnimationFrame(() => {
+    syncTabBadges(dialog);
+    syncTabInk(dialog);
+  });
 }

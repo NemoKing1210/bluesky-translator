@@ -15,6 +15,7 @@ export const ROOT_ATTR = 'data-bst-root';
 export const POST_ATTR = 'data-bst-post';
 export const BTN_ATTR = 'data-bst-btn';
 export const RESULT_ATTR = 'data-bst-result';
+export const TOOLBAR_ATTR = 'data-bst-toolbar';
 export const NAV_BTN_ATTR = 'data-bst-nav';
 
 export const SCAN_DEBOUNCE_MS = 350;

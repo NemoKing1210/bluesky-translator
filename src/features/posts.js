@@ -4,10 +4,22 @@ import {
   POST_ATTR,
   POST_TEXT_SELECTORS,
   RESULT_ATTR,
+  TOOLBAR_ATTR,
 } from '../constants.js';
 import { fmt, resolveTargetLang } from '../i18n/index.js';
 import { locale, settings, t } from '../state.js';
 import { escapeHtml } from '../utils/html.js';
+
+/** Stop Bluesky’s post-open handlers without killing our own click. */
+const QUIET_POINTER_EVENTS = [
+  'auxclick',
+  'mousedown',
+  'mouseup',
+  'pointerdown',
+  'pointerup',
+  'touchstart',
+  'touchend',
+];
 
 function findPostTextRoots(root = document) {
   const seen = new Set();
@@ -15,7 +27,6 @@ function findPostTextRoots(root = document) {
   for (const sel of POST_TEXT_SELECTORS) {
     root.querySelectorAll(sel).forEach((el) => {
       if (seen.has(el)) return;
-      // Prefer the outermost postText container when nested matches exist.
       if (el.closest(`[${POST_ATTR}]`)) return;
       const nestedParent = el.parentElement?.closest?.(POST_TEXT_SELECTORS[0]);
       if (nestedParent && nestedParent !== el) return;
@@ -27,16 +38,70 @@ function findPostTextRoots(root = document) {
 }
 
 function extractPostText(el) {
-  // Clone and strip our injected UI so Translate text is never re-translated.
   const clone = el.cloneNode(true);
-  clone.querySelectorAll(`[${BTN_ATTR}], [${RESULT_ATTR}]`).forEach((n) => n.remove());
+  clone
+    .querySelectorAll(`[${TOOLBAR_ATTR}], [${BTN_ATTR}], [${RESULT_ATTR}]`)
+    .forEach((n) => n.remove());
   return String(clone.innerText || clone.textContent || '')
     .replace(/\u00a0/g, ' ')
     .trim();
 }
 
+/**
+ * One delegated capture handler on the toolbar:
+ * - pointer events: stopPropagation only (so the post doesn’t open)
+ * - click: handle Translate / Retry, then stopPropagation
+ *
+ * Do NOT use stopImmediatePropagation on the toolbar — it blocked the button handler.
+ */
+function bindToolbar(bar, postEl) {
+  if (bar.dataset.bstBound === '1') return;
+  bar.dataset.bstBound = '1';
+
+  const quiet = (event) => {
+    event.stopPropagation();
+  };
+  for (const type of QUIET_POINTER_EVENTS) {
+    bar.addEventListener(type, quiet, true);
+  }
+
+  bar.addEventListener(
+    'click',
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const retry = event.target.closest?.('[data-bst-retry]');
+      if (retry && bar.contains(retry)) {
+        const translateBtn = bar.querySelector(`[${BTN_ATTR}]`);
+        if (translateBtn) runTranslate(postEl, translateBtn);
+        return;
+      }
+
+      const btn = event.target.closest?.(`[${BTN_ATTR}]`);
+      if (btn && bar.contains(btn)) {
+        onTranslateClick(postEl, btn);
+      }
+    },
+    true
+  );
+}
+
+function ensureToolbar(postEl) {
+  let bar = postEl.querySelector(`[${TOOLBAR_ATTR}]`);
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'bst-toolbar';
+    bar.setAttribute(TOOLBAR_ATTR, '1');
+    postEl.appendChild(bar);
+  }
+  bindToolbar(bar, postEl);
+  return bar;
+}
+
 function ensureButton(postEl) {
-  let btn = postEl.querySelector(`[${BTN_ATTR}]`);
+  const bar = ensureToolbar(postEl);
+  let btn = bar.querySelector(`[${BTN_ATTR}]`);
   if (btn) return btn;
 
   btn = document.createElement('button');
@@ -44,18 +109,19 @@ function ensureButton(postEl) {
   btn.className = 'bst-btn';
   btn.setAttribute(BTN_ATTR, '1');
   btn.textContent = t.btnTranslate;
-  postEl.appendChild(btn);
+  bar.appendChild(btn);
   return btn;
 }
 
 function ensureResult(postEl) {
-  let box = postEl.querySelector(`[${RESULT_ATTR}]`);
+  const bar = ensureToolbar(postEl);
+  let box = bar.querySelector(`[${RESULT_ATTR}]`);
   if (box) return box;
   box = document.createElement('div');
   box.className = 'bst-result';
   box.setAttribute(RESULT_ATTR, '1');
   box.hidden = true;
-  postEl.appendChild(box);
+  bar.appendChild(box);
   return box;
 }
 
@@ -80,6 +146,20 @@ function setResultContent(box, { translated, detected, fromCache, error }) {
     `<div class="bst-result__text">${escapeHtml(translated)}</div>`;
 }
 
+function setButtonLabel(btn, label, { loading = false } = {}) {
+  btn.classList.toggle('is-loading', loading);
+  btn.disabled = loading;
+  if (loading) {
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML =
+      `<span class="bst-btn__spinner" aria-hidden="true"></span>` +
+      `<span class="bst-btn__label">${escapeHtml(label)}</span>`;
+  } else {
+    btn.removeAttribute('aria-busy');
+    btn.textContent = label;
+  }
+}
+
 async function runTranslate(postEl, btn) {
   const text = extractPostText(postEl);
   if (!text) {
@@ -88,8 +168,7 @@ async function runTranslate(postEl, btn) {
   }
 
   const targetLang = resolveTargetLang(settings.targetLang, locale);
-  btn.disabled = true;
-  btn.textContent = t.translating;
+  setButtonLabel(btn, t.translating, { loading: true });
   const box = ensureResult(postEl);
   box.hidden = true;
 
@@ -113,43 +192,37 @@ async function runTranslate(postEl, btn) {
         fromCache: result.fromCache,
       });
     }
-    btn.textContent = t.btnHide;
+    setButtonLabel(btn, t.btnHide);
     btn.dataset.bstState = 'shown';
-  } catch (_) {
+  } catch (err) {
+    if (settings.debugMode) {
+      console.warn('[Bluesky Translator] translate failed', err);
+    }
     setResultContent(box, { error: t.errNetwork });
-    btn.textContent = t.btnTranslate;
+    setButtonLabel(btn, t.btnTranslate);
     btn.dataset.bstState = '';
-  } finally {
-    btn.disabled = false;
   }
 }
 
-function onPostClick(event) {
-  const postEl = event.currentTarget;
-  const retry = event.target.closest?.('[data-bst-retry]');
-  const btn = event.target.closest?.(`[${BTN_ATTR}]`);
-
-  if (retry) {
-    const translateBtn = postEl.querySelector(`[${BTN_ATTR}]`);
-    if (translateBtn) runTranslate(postEl, translateBtn);
-    return;
-  }
-
-  if (!btn || !postEl.contains(btn)) return;
-
+function onTranslateClick(postEl, btn) {
+  if (btn.classList.contains('is-loading')) return;
   if (btn.dataset.bstState === 'shown') {
     const box = postEl.querySelector(`[${RESULT_ATTR}]`);
     if (box) box.hidden = true;
     btn.dataset.bstState = '';
-    btn.textContent = t.btnTranslate;
+    setButtonLabel(btn, t.btnTranslate);
     return;
   }
-
   runTranslate(postEl, btn);
 }
 
 function enhancePost(el) {
-  if (el.hasAttribute(POST_ATTR)) return;
+  if (el.hasAttribute(POST_ATTR)) {
+    // Re-bind if toolbar was injected by an older build without listeners.
+    const bar = el.querySelector(`[${TOOLBAR_ATTR}]`);
+    if (bar) bindToolbar(bar, el);
+    return;
+  }
   if (!settings.showButtonOnPosts) return;
 
   const text = extractPostText(el);
@@ -157,26 +230,22 @@ function enhancePost(el) {
 
   el.setAttribute(POST_ATTR, '1');
   ensureButton(el);
-  el.addEventListener('click', onPostClick);
 }
 
 export function scanPosts() {
   if (!settings.showButtonOnPosts) {
-    document.querySelectorAll(`[${POST_ATTR}]`).forEach((el) => {
-      el.querySelector(`[${BTN_ATTR}]`)?.remove();
-    });
+    document.querySelectorAll(`[${TOOLBAR_ATTR}]`).forEach((el) => el.remove());
     return;
   }
 
   findPostTextRoots().forEach(enhancePost);
 
-  // Refresh labels if locale changed while buttons already exist.
   document.querySelectorAll(`[${BTN_ATTR}]`).forEach((btn) => {
-    if (btn.disabled) return;
+    if (btn.classList.contains('is-loading')) return;
     if (btn.dataset.bstState === 'shown') {
-      btn.textContent = t.btnHide;
+      setButtonLabel(btn, t.btnHide);
     } else {
-      btn.textContent = t.btnTranslate;
+      setButtonLabel(btn, t.btnTranslate);
     }
   });
 }

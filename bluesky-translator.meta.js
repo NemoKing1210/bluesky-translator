@@ -8,7 +8,7 @@
 // @name:fr            Bluesky Translator
 // @name:ja            Bluesky Translator
 // @namespace          https://github.com/NemoKing1210/bluesky-translator
-// @version            0.1.1
+// @version            0.1.7
 // @author             NemoKing1210
 // @description        Translate Bluesky posts in place on bsky.app
 // @description:ru     Переводит посты Bluesky прямо на bsky.app

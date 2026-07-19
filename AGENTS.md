@@ -76,6 +76,7 @@ Bluesky’s web client DOM changes often — prefer `data-testid` selectors and 
 - After changing source or metadata, run `npm run build` so root `.user.js` / `.meta.js` stay in sync.
 - Production builds minify JS/CSS; edit `src/` for readable code, not the committed bundle.
 - **Always bump the script version** in `package.json` when shipping changes (features, fixes, UI, i18n, metadata). `version` is the single source of truth for `@version` and `SCRIPT_VERSION` — do not leave it unchanged across user-visible updates.
+- **Keep [`README.md`](README.md) in sync** with the product: when something is added, changed, removed, or renamed (features, settings tabs/options, install flow, supported managers, locales, target languages, architecture, FAQ), update the matching README sections the same change. Do not leave docs describing behavior that no longer exists.
 
 ## Releases
 
@@ -84,7 +85,7 @@ When making any change that should reach users (including fixes and UI polish):
 1. Bump `version` in `package.json` (SemVer: patch for fixes, minor for features).
 2. Run `npm run build`.
 3. Add a Keep a Changelog entry in `CHANGELOG.md`.
-4. Update README version badge if it mentions the version.
+4. Update [`README.md`](README.md) wherever the change is user-visible or developer-facing (features, settings table, how it works, FAQ, badges, layout, etc.). At minimum refresh the version badge / status line when the version changes.
 
 Changing `SCRIPT_VERSION` clears the translation cache on next run (`bst_cache_script_version`).
 
