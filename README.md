@@ -3,14 +3,14 @@
 [![CI](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml)
 [![Install userscript](https://img.shields.io/badge/⬇_Install-userscript-1083fe?style=for-the-badge)](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/bluesky-translator.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.8-green?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.10-green?style=for-the-badge)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=for-the-badge)](package.json)
 
 Userscript that adds **in-place translation** for posts on [Bluesky](https://bsky.app) — without leaving the feed.
 
 Compatible with [Tampermonkey](https://www.tampermonkey.net/), [Violentmonkey](https://violentmonkey.github.io/), [Greasemonkey](https://www.greasespot.net/), [ScriptCat](https://scriptcat.org/), and other managers that support the `// ==UserScript==` metadata block.
 
-> **Status:** early (`0.1.8`) — translate button, settings, cache, multi-language UI.
+> **Status:** early (`0.1.10`) — translate button, settings, cache, multi-language UI.
 > **Note:** Not affiliated with Bluesky Social PBC.
 
 ---
@@ -74,6 +74,7 @@ For hot reload during development, run `npm run dev` and install the Vite-served
 ### On Bluesky (`bsky.app`)
 
 - **Translate** button on its own row under post text (spinner while loading; click does not open the post)
+- Same button on **quoted / embedded** posts inside the feed (not only the outer post)
 - Translation shown in a result panel only when ready (smooth expand); click again to hide
 - Target language from settings — **Auto** follows the UI / browser locale, or pick from ~40 languages with full names and flags
 - Optional skip when the post is already in the target language
@@ -117,8 +118,8 @@ Saving closes the panel and applies immediately (nav labels and post buttons ref
 ## How it works
 
 1. Matches `https://bsky.app/*` at `document-idle`.
-2. Finds post text via `[data-testid="postText"]` (adjustable in `src/constants.js` if Bluesky’s DOM changes).
-3. Injects a **Translate** control under each eligible post.
+2. Finds post text via `[data-testid="postText"]` and quoted embeds (`[aria-label^="Post by"] …`) — adjustable in `src/constants.js` if Bluesky’s DOM changes.
+3. Injects a **Translate** toolbar as a sibling after each eligible text node.
 4. On click, requests `translate.googleapis.com` through the userscript sandbox (`@connect`).
 5. Stores successful results in `GM` storage (`bst_cache_v1`) until TTL expires or the script version changes.
 

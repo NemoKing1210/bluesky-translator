@@ -55,8 +55,8 @@ bluesky-translator/
 
 1. Match `https://bsky.app/*` at `document-idle`.
 2. Bootstrap styles, settings, DOM scan, `MutationObserver`, and SPA href hooks (`pushState` / `replaceState` / poll).
-3. Find post text via `POST_TEXT_SELECTORS` (prefer `[data-testid="postText"]`).
-4. Inject a **Translate** button under each post; on click call Google Translate (`translate.googleapis.com`) via `GM_xmlhttpRequest`.
+3. Find post text via `POST_TEXT_SELECTORS` (prefer `[data-testid="postText"]`; also quoted embeds via `[aria-label^="Post by"] …`).
+4. Inject a **Translate** toolbar as a sibling after each text node; on click call Google Translate (`translate.googleapis.com`) via `GM_xmlhttpRequest`.
 5. Show the translation in a result box; toggle hide/show on the same button.
 6. Cache successful translations in `GM_getValue` / `GM_setValue` (`bst_cache_v1`); settings in `bst_settings`.
 7. Settings via `GM_registerMenuCommand`; toasts for save / cache clear / version bump.

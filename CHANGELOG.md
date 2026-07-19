@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-07-19
+
+### Fixed
+
+- Quote-card Translate toolbar no longer sits between text and media (image / link preview stayed shifted)
+
+## [0.1.9] - 2026-07-19
+
+### Added
+
+- Translate button on quoted / embedded posts (Bluesky “Post by …” cards without `postText`)
+
+### Changed
+
+- Translate toolbar is inserted as a sibling after post text so line-clamped quote bodies do not clip the button
+
 ## [0.1.8] - 2026-07-19
 
 ### Changed

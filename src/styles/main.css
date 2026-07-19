@@ -25,10 +25,10 @@ button.bst-nav-item svg {
 .bst-toolbar {
   display: block;
   width: 100%;
-  flex: 0 0 100%;
+  flex: 0 0 auto;
   align-self: stretch;
   margin-top: 0.5rem;
-  clear: both;
+  box-sizing: border-box;
 }
 
 .bst-btn {

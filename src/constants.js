@@ -30,8 +30,14 @@ export const GOOGLE_TRANSLATE_URL =
 /**
  * Bluesky post text nodes. Prefer stable data-testid; the web client DOM
  * changes often — adjust here when selectors break.
+ *
+ * Quoted / embedded posts omit `postText` and use `aria-label="Post by …"`
+ * with a `data-word-wrap` body (often line-clamped).
  */
-export const POST_TEXT_SELECTORS = ['[data-testid="postText"]'];
+export const POST_TEXT_SELECTORS = [
+  '[data-testid="postText"]',
+  '[aria-label^="Post by"] [data-word-wrap="1"]:not([data-testid="postText"])',
+];
 
 /**
  * Target languages for post translation (Google Translate codes).

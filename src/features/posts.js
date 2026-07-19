@@ -24,17 +24,55 @@ const QUIET_POINTER_EVENTS = [
 function findPostTextRoots(root = document) {
   const seen = new Set();
   const nodes = [];
+  const primarySel = POST_TEXT_SELECTORS[0];
   for (const sel of POST_TEXT_SELECTORS) {
     root.querySelectorAll(sel).forEach((el) => {
       if (seen.has(el)) return;
-      if (el.closest(`[${POST_ATTR}]`)) return;
-      const nestedParent = el.parentElement?.closest?.(POST_TEXT_SELECTORS[0]);
+      const nestedParent = el.parentElement?.closest?.(primarySel);
       if (nestedParent && nestedParent !== el) return;
       seen.add(el);
       nodes.push(el);
     });
   }
   return nodes;
+}
+
+/** Quote / embed card that owns `postEl` text (Bluesky “Post by …” shell). */
+function getQuoteCard(postEl) {
+  const card = postEl.closest('[aria-label^="Post by"]');
+  return card && card.contains(postEl) ? card : null;
+}
+
+/**
+ * Toolbar placement:
+ * - normal posts: sibling after the text node (avoids line-clamp clipping)
+ * - quote embeds: last child of the card so media/link previews stay under the text
+ */
+function getToolbar(postEl) {
+  const child = postEl.querySelector(`[${TOOLBAR_ATTR}]`);
+  if (child) return child;
+  const sib = postEl.nextElementSibling;
+  if (sib?.hasAttribute?.(TOOLBAR_ATTR)) return sib;
+  const quote = getQuoteCard(postEl);
+  if (quote) {
+    const owned = quote.querySelector(`[${TOOLBAR_ATTR}]`);
+    if (owned) return owned;
+  }
+  return null;
+}
+
+function placeToolbar(postEl, bar) {
+  const quote = getQuoteCard(postEl);
+  if (quote) {
+    // Keep image / link preview directly under post text.
+    if (bar.parentElement !== quote || quote.lastElementChild !== bar) {
+      quote.appendChild(bar);
+    }
+    return;
+  }
+  if (postEl.nextElementSibling !== bar) {
+    postEl.insertAdjacentElement('afterend', bar);
+  }
 }
 
 function extractPostText(el) {
@@ -88,13 +126,13 @@ function bindToolbar(bar, postEl) {
 }
 
 function ensureToolbar(postEl) {
-  let bar = postEl.querySelector(`[${TOOLBAR_ATTR}]`);
+  let bar = getToolbar(postEl);
   if (!bar) {
     bar = document.createElement('div');
     bar.className = 'bst-toolbar';
     bar.setAttribute(TOOLBAR_ATTR, '1');
-    postEl.appendChild(bar);
   }
+  placeToolbar(postEl, bar);
   bindToolbar(bar, postEl);
   return bar;
 }
@@ -163,7 +201,7 @@ function showResult(postEl, payload) {
 }
 
 function hideResult(postEl, { remove = false } = {}) {
-  const box = postEl.querySelector(`[${RESULT_ATTR}]`);
+  const box = getToolbar(postEl)?.querySelector(`[${RESULT_ATTR}]`);
   if (!box) return;
 
   const finish = () => {
@@ -265,9 +303,12 @@ function onTranslateClick(postEl, btn) {
 
 function enhancePost(el) {
   if (el.hasAttribute(POST_ATTR)) {
-    // Re-bind if toolbar was injected by an older build without listeners.
-    const bar = el.querySelector(`[${TOOLBAR_ATTR}]`);
-    if (bar) bindToolbar(bar, el);
+    // Re-place / re-bind if an older build left the toolbar between text and media.
+    const bar = getToolbar(el);
+    if (bar) {
+      placeToolbar(el, bar);
+      bindToolbar(bar, el);
+    }
     return;
   }
   if (!settings.showButtonOnPosts) return;
