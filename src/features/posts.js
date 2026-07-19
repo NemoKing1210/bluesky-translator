@@ -10,6 +10,8 @@ import {
 import { fmt, resolveTargetLang } from '../i18n/index.js';
 import { locale, settings, t } from '../state.js';
 import { escapeHtml } from '../utils/html.js';
+import { isAutoTranslateAllowedForHandle } from './allowlist.js';
+import { resolvePostAuthorHandle } from './author.js';
 
 /** Stop Bluesky’s post-open handlers without killing our own click. */
 const QUIET_POINTER_EVENTS = [
@@ -34,6 +36,12 @@ const autoQueue = [];
 
 function isAutoMode() {
   return settings.translateMode === 'auto';
+}
+
+function shouldAutoTranslatePost(postEl) {
+  if (!isAutoMode() || !settings.showButtonOnPosts) return false;
+  const handle = resolvePostAuthorHandle(postEl);
+  return isAutoTranslateAllowedForHandle(handle);
 }
 
 function findPostTextRoots(root = document) {
@@ -344,7 +352,7 @@ function pumpAutoQueue() {
     const postEl = autoQueue.shift();
     if (!postEl || !document.contains(postEl)) continue;
     postEl.removeAttribute(AUTO_QUEUED_ATTR);
-    if (!isAutoMode() || !settings.showButtonOnPosts) continue;
+    if (!shouldAutoTranslatePost(postEl)) continue;
     if (postEl.getAttribute(AUTO_DONE_ATTR) === '1') continue;
 
     const btn = getToolbar(postEl)?.querySelector(`[${BTN_ATTR}]`);
@@ -364,7 +372,7 @@ function pumpAutoQueue() {
 }
 
 function enqueueAutoTranslate(postEl) {
-  if (!isAutoMode() || !settings.showButtonOnPosts) return;
+  if (!shouldAutoTranslatePost(postEl)) return;
   if (postEl.getAttribute(AUTO_DONE_ATTR) === '1') return;
   if (postEl.getAttribute(AUTO_QUEUED_ATTR) === '1') return;
   const btn = getToolbar(postEl)?.querySelector(`[${BTN_ATTR}]`);
@@ -395,7 +403,7 @@ function ensureVisibilityObserver() {
 }
 
 function observeForAuto(postEl) {
-  if (!isAutoMode() || !settings.showButtonOnPosts) return;
+  if (!shouldAutoTranslatePost(postEl)) return;
   const obs = ensureVisibilityObserver();
   if (postEl.getAttribute(OBSERVED_ATTR) === '1') return;
   postEl.setAttribute(OBSERVED_ATTR, '1');
@@ -435,6 +443,13 @@ export function scanPosts() {
   }
 
   findPostTextRoots().forEach(enhancePost);
+
+  // Re-queue visible allowlisted posts after settings / DOM rescans.
+  if (isAutoMode()) {
+    document.querySelectorAll(`[${POST_ATTR}]`).forEach((el) => {
+      if (shouldAutoTranslatePost(el)) enqueueAutoTranslate(el);
+    });
+  }
 
   document.querySelectorAll(`[${BTN_ATTR}]`).forEach((btn) => {
     if (btn.classList.contains('is-loading')) return;

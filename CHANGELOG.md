@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.18] - 2026-07-19
+
+### Fixed
+
+- Allowlist panel stays hidden unless auto mode + “selected accounts” is active (`display: flex` no longer overrides `[hidden]`)
+
+## [0.1.17] - 2026-07-19
+
+### Added
+
+- Auto-translate scope: all accounts or selected allowlist (nickname input + list)
+- Post ⋮ menu item to add/remove the author from auto-translate
+
 ## [0.1.16] - 2026-07-19
 
 ### Changed
@@ -27,19 +40,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Settings dialog width ~1.5× again (1035px)
+- Settings dialog width ~1.5Г— again (1035px)
 
 ## [0.1.12] - 2026-07-19
 
 ### Added
 
-- Translation mode: **On button click** (default) or **Automatic** — auto-translates when a post is even slightly visible (IntersectionObserver, capped concurrency)
+- Translation mode: **On button click** (default) or **Automatic** вЂ” auto-translates when a post is even slightly visible (IntersectionObserver, capped concurrency)
 
 ## [0.1.11] - 2026-07-19
 
 ### Added
 
-- Settings → **Providers** tab: Google, DeepL, Microsoft Translator, OpenAI, Yandex, LibreTranslate
+- Settings в†’ **Providers** tab: Google, DeepL, Microsoft Translator, OpenAI, Yandex, LibreTranslate
 - Provider-specific credential fields (API key, region, model, base URL, etc.) shown for the selected provider
 
 ## [0.1.10] - 2026-07-19
@@ -52,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Translate button on quoted / embedded posts (Bluesky “Post by …” cards without `postText`)
+- Translate button on quoted / embedded posts (Bluesky вЂњPost by вЂ¦вЂќ cards without `postText`)
 
 ### Changed
 
@@ -80,13 +93,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Settings dialog ~1.5× larger (690px wide, taller max height)
+- Settings dialog ~1.5Г— larger (690px wide, taller max height)
 
 ## [0.1.4] - 2026-07-19
 
 ### Added
 
-- Settings → Cache: usage meter with used/limit, fill %, entry count, TTL preview, and color levels
+- Settings в†’ Cache: usage meter with used/limit, fill %, entry count, TTL preview, and color levels
 
 ## [0.1.3] - 2026-07-19
 
@@ -104,10 +117,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Settings → Translation: expanded target language list with full names and country flags
+- Settings в†’ Translation: expanded target language list with full names and country flags
 
 ## [0.1.0] - 2026-07-19
 
 ### Added
 
 - Initial userscript scaffold for [Bluesky](https://bsky.app): Translate button on posts, Google Translate backend, settings panel, translation cache, SPA DOM observer
+

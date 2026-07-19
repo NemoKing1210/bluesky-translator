@@ -4,6 +4,12 @@ import {
 } from '$';
 import { DEFAULT_SETTINGS, SETTINGS_KEY } from './constants.js';
 import { isKnownProvider, mergeProviderConfig } from './providers/registry.js';
+import { normalizeHandle } from './utils/handle.js';
+
+function normalizeAllowlist(raw) {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.map(normalizeHandle).filter(Boolean))].sort();
+}
 
 function normalizeSettings(raw) {
   const base = raw && typeof raw === 'object' ? raw : {};
@@ -11,6 +17,8 @@ function normalizeSettings(raw) {
   merged.provider = isKnownProvider(merged.provider) ? merged.provider : 'google';
   merged.providerConfig = mergeProviderConfig(base.providerConfig);
   merged.translateMode = merged.translateMode === 'auto' ? 'auto' : 'button';
+  merged.autoScope = merged.autoScope === 'allowlist' ? 'allowlist' : 'all';
+  merged.autoAllowlist = normalizeAllowlist(merged.autoAllowlist);
   return merged;
 }
 

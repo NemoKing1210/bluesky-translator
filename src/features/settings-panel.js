@@ -12,10 +12,11 @@ import {
   SCRIPT_VERSION,
   TARGET_LANGUAGES,
 } from '../constants.js';
-import { LOCALE_FLAG_AUTO, LOCALE_FLAGS, LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES } from '../i18n/index.js';
+import { fmt, LOCALE_FLAG_AUTO, LOCALE_FLAGS, LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES } from '../i18n/index.js';
 import { getProvider, TRANSLATION_PROVIDERS } from '../providers/registry.js';
 import { saveSettings } from '../settings.js';
 import { reloadRuntimeSettings, settings, t } from '../state.js';
+import { formatHandleDisplay, normalizeHandle } from '../utils/handle.js';
 import { escapeAttr, escapeHtml } from '../utils/html.js';
 import { scanPosts } from './posts.js';
 import { showToast } from './toast.js';
@@ -333,6 +334,49 @@ function activateSettingsTab(dialog, tabId) {
   });
 }
 
+function buildAllowlistItemsHtml(list) {
+  const handles = Array.isArray(list) ? list : [];
+  if (!handles.length) {
+    return `<p class="bst-hint bst-allowlist__empty">${escapeHtml(t.allowlistEmpty)}</p>`;
+  }
+  return `
+    <ul class="bst-allowlist" data-bst-allowlist>
+      ${handles
+        .map(
+          (handle) => `
+        <li class="bst-allowlist__item" data-bst-allowlist-item data-handle="${escapeAttr(handle)}">
+          <span class="bst-allowlist__handle">${escapeHtml(formatHandleDisplay(handle))}</span>
+          <button type="button" class="bst-allowlist__remove" data-bst-allowlist-remove="${escapeAttr(handle)}" aria-label="${escapeAttr(t.allowlistRemove)}">×</button>
+        </li>`
+        )
+        .join('')}
+    </ul>
+  `;
+}
+
+function readAllowlistFromForm(form) {
+  return [...form.querySelectorAll('[data-bst-allowlist-item]')]
+    .map((el) => normalizeHandle(el.getAttribute('data-handle')))
+    .filter(Boolean);
+}
+
+function paintAllowlist(form, list) {
+  const host = form.querySelector('[data-bst-allowlist-host]');
+  if (!host) return;
+  host.innerHTML = buildAllowlistItemsHtml(list);
+}
+
+function syncAutoOptionVisibility(dialog) {
+  const form = dialog?.querySelector('form');
+  if (!form) return;
+  const mode = form.translateMode?.value === 'auto' ? 'auto' : 'button';
+  const scope = form.autoScope?.value === 'allowlist' ? 'allowlist' : 'all';
+  const autoOpts = form.querySelector('[data-bst-auto-options]');
+  const allowPanel = form.querySelector('[data-bst-allowlist-panel]');
+  if (autoOpts) autoOpts.hidden = mode !== 'auto';
+  if (allowPanel) allowPanel.hidden = !(mode === 'auto' && scope === 'allowlist');
+}
+
 function readForm(form) {
   const cacheHours = Number(form.cacheHours.value);
   const provider = form.provider?.value || 'google';
@@ -360,6 +404,8 @@ function readForm(form) {
         : DEFAULT_SETTINGS.cacheHours,
     autoDetectSkipSameLang: form.autoDetectSkipSameLang.checked,
     translateMode: form.translateMode?.value === 'auto' ? 'auto' : 'button',
+    autoScope: form.autoScope?.value === 'allowlist' ? 'allowlist' : 'all',
+    autoAllowlist: readAllowlistFromForm(form),
     showButtonOnPosts: form.showButtonOnPosts.checked,
     debugMode: form.debugMode.checked,
   };
@@ -446,6 +492,34 @@ export function openSettings() {
               </select>
             </label>
             <p class="bst-hint">${escapeHtml(t.settingsTranslateModeHint)}</p>
+            <div class="bst-auto-options" data-bst-auto-options${settings.translateMode === 'auto' ? '' : ' hidden'}>
+              <label class="bst-field">
+                <span>${escapeHtml(t.settingsAutoScope)}</span>
+                <select name="autoScope">
+                  <option value="all"${settings.autoScope !== 'allowlist' ? ' selected' : ''}>${escapeHtml(t.autoScopeAll)}</option>
+                  <option value="allowlist"${settings.autoScope === 'allowlist' ? ' selected' : ''}>${escapeHtml(t.autoScopeAllowlist)}</option>
+                </select>
+              </label>
+              <p class="bst-hint">${escapeHtml(t.settingsAutoScopeHint)}</p>
+              <div
+                class="bst-allowlist-panel"
+                data-bst-allowlist-panel
+                ${settings.translateMode === 'auto' && settings.autoScope === 'allowlist' ? '' : 'hidden'}
+              >
+                <div class="bst-allowlist-add">
+                  <input
+                    name="allowlistInput"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="${escapeAttr(t.allowlistPlaceholder)}"
+                  />
+                  <button type="button" class="bst-settings__ghost" data-bst-allowlist-add="1">${escapeHtml(t.allowlistAdd)}</button>
+                </div>
+                <div data-bst-allowlist-host>${buildAllowlistItemsHtml(settings.autoAllowlist)}</div>
+                <p class="bst-hint">${escapeHtml(t.settingsAllowlistHint)}</p>
+              </div>
+            </div>
             <label class="bst-field">
               <span>${escapeHtml(t.settingsTargetLang)}</span>
               <select name="targetLang">${langOptions(settings.targetLang)}</select>
@@ -583,6 +657,49 @@ export function openSettings() {
       cacheHours: Number(form.cacheHours?.value),
       provider: form.provider?.value,
     });
+  });
+
+  form.querySelector('select[name="translateMode"]')?.addEventListener('change', () => {
+    syncAutoOptionVisibility(dialog);
+  });
+
+  form.querySelector('select[name="autoScope"]')?.addEventListener('change', () => {
+    syncAutoOptionVisibility(dialog);
+  });
+
+  form.querySelector('[data-bst-allowlist-add]')?.addEventListener('click', () => {
+    const input = form.querySelector('input[name="allowlistInput"]');
+    const handle = normalizeHandle(input?.value);
+    if (!handle) {
+      showToast(t.allowlistInvalid, { type: 'warning' });
+      return;
+    }
+    const list = readAllowlistFromForm(form);
+    if (list.includes(handle)) {
+      showToast(fmt(t.allowlistExists, { handle: formatHandleDisplay(handle) }), {
+        type: 'info',
+      });
+      return;
+    }
+    list.push(handle);
+    list.sort();
+    paintAllowlist(form, list);
+    if (input) input.value = '';
+    input?.focus();
+  });
+
+  form.querySelector('input[name="allowlistInput"]')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    form.querySelector('[data-bst-allowlist-add]')?.click();
+  });
+
+  form.addEventListener('click', (e) => {
+    const btn = e.target?.closest?.('[data-bst-allowlist-remove]');
+    if (!btn || !form.contains(btn)) return;
+    const handle = normalizeHandle(btn.getAttribute('data-bst-allowlist-remove'));
+    const list = readAllowlistFromForm(form).filter((item) => item !== handle);
+    paintAllowlist(form, list);
   });
 
   form.querySelector('select[name="provider"]')?.addEventListener('change', () => {

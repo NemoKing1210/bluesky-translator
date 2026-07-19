@@ -1,6 +1,7 @@
-import { BTN_ATTR, NAV_BTN_ATTR, POST_ATTR, RESULT_ATTR, SCAN_DEBOUNCE_MS, TOOLBAR_ATTR } from '../constants.js';
+import { BTN_ATTR, MENU_ATTR, NAV_BTN_ATTR, POST_ATTR, RESULT_ATTR, SCAN_DEBOUNCE_MS, TOOLBAR_ATTR } from '../constants.js';
 import { debounce } from '../utils/debounce.js';
 import { scanPosts } from './posts.js';
+import { scanPostMenus } from './post-menu.js';
 import { ensureNavSettingsButton } from './settings-panel.js';
 
 export function isBstManagedElement(el) {
@@ -11,6 +12,7 @@ export function isBstManagedElement(el) {
     el.hasAttribute?.(RESULT_ATTR) ||
     el.hasAttribute?.(TOOLBAR_ATTR) ||
     el.hasAttribute?.(NAV_BTN_ATTR) ||
+    el.hasAttribute?.(MENU_ATTR) ||
     el.id === 'bst-toast-host' ||
     el.id === 'bst-settings-root'
   ) {
@@ -21,11 +23,12 @@ export function isBstManagedElement(el) {
       el.classList?.contains('bst-toolbar') ||
       el.classList?.contains('bst-result') ||
       el.classList?.contains('bst-nav-item') ||
+      el.classList?.contains('bst-menu-item') ||
       el.classList?.contains('bst-toast-host') ||
       el.classList?.contains('bst-toast') ||
       el.classList?.contains('bst-settings-backdrop') ||
       el.closest?.(
-        `[${POST_ATTR}], [${BTN_ATTR}], [${RESULT_ATTR}], [${TOOLBAR_ATTR}], [${NAV_BTN_ATTR}], .bst-settings-backdrop, #bst-toast-host`
+        `[${POST_ATTR}], [${BTN_ATTR}], [${RESULT_ATTR}], [${TOOLBAR_ATTR}], [${NAV_BTN_ATTR}], [${MENU_ATTR}], .bst-settings-backdrop, #bst-toast-host`
       )
   );
 }
@@ -85,4 +88,5 @@ export function isBlueskyHost() {
 export function scanPage() {
   ensureNavSettingsButton();
   scanPosts();
+  scanPostMenus();
 }

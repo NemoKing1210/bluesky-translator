@@ -17,6 +17,7 @@ export const BTN_ATTR = 'data-bst-btn';
 export const RESULT_ATTR = 'data-bst-result';
 export const TOOLBAR_ATTR = 'data-bst-toolbar';
 export const NAV_BTN_ATTR = 'data-bst-nav';
+export const MENU_ATTR = 'data-bst-menu';
 
 export const SCAN_DEBOUNCE_MS = 350;
 export const CACHE_HOURS_MAX = 168;
@@ -94,6 +95,9 @@ export const DEFAULT_SETTINGS = {
   targetLang: 'auto',
   /** 'button' = Translate on click; 'auto' = translate when post enters the viewport */
   translateMode: 'button',
+  /** 'all' = every visible post; 'allowlist' = only listed accounts */
+  autoScope: 'all',
+  autoAllowlist: [],
   autoDetectSkipSameLang: true,
   showButtonOnPosts: true,
   debugMode: false,

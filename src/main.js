@@ -4,6 +4,7 @@ import {
 import './styles/main.css';
 import { ROOT_ATTR } from './constants.js';
 import { openSettings } from './features/settings-panel.js';
+import { observePostMenus } from './features/post-menu.js';
 import {
   bindSpaNavigation,
   isBlueskyHost,
@@ -26,6 +27,7 @@ function init() {
 
   scanPage();
   observeDom(scanPage);
+  observePostMenus();
   bindSpaNavigation(scanPage);
 }
 

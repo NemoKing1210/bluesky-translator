@@ -578,6 +578,109 @@ body.bst-scroll-lock {
   display: flex;
 }
 
+.bst-auto-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bst-auto-options[hidden],
+.bst-allowlist-panel[hidden] {
+  display: none !important;
+}
+
+.bst-allowlist-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 140, 170, 0.22);
+  background: rgba(120, 140, 170, 0.06);
+}
+
+.bst-allowlist-add {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.bst-allowlist-add input {
+  flex: 1 1 auto;
+  min-width: 0;
+  appearance: none;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: #1a202b;
+  color: #eef2f7;
+  color-scheme: dark;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+.bst-allowlist-add input:focus {
+  outline: none;
+  border-color: rgba(16, 131, 254, 0.55);
+  box-shadow: 0 0 0 3px rgba(16, 131, 254, 0.16);
+}
+
+.bst-allowlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.bst-allowlist__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.bst-allowlist__handle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bst-allowlist__remove {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(238, 242, 247, 0.7);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+}
+
+.bst-allowlist__remove:hover {
+  background: rgba(255, 80, 80, 0.16);
+  color: #ffb4b4;
+}
+
+.bst-allowlist__empty {
+  margin: 0;
+}
+
+.bst-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
 .bst-field select option {
   background-color: #1a202b;
   color: #eef2f7;
