@@ -335,6 +335,168 @@ function activateSettingsTab(dialog, tabId) {
   });
 }
 
+function sectionHtml(title, body, { desc = '', className = '' } = {}) {
+  const descHtml = desc
+    ? `<p class="bst-section__desc">${escapeHtml(desc)}</p>`
+    : '';
+  return `
+    <section class="bst-section${className ? ` ${className}` : ''}">
+      <header class="bst-section__head">
+        <h3 class="bst-section__title">${escapeHtml(title)}</h3>
+        ${descHtml}
+      </header>
+      <div class="bst-section__body">${body}</div>
+    </section>
+  `;
+}
+
+function fieldHtml(label, control, hint = '') {
+  return `
+    <label class="bst-field">
+      <span class="bst-field__label">${escapeHtml(label)}</span>
+      ${control}
+      ${hint ? `<span class="bst-field__hint">${escapeHtml(hint)}</span>` : ''}
+    </label>
+  `;
+}
+
+function listEditorHtml({
+  title,
+  hint,
+  inputHtml,
+  addAttr,
+  hostAttr,
+  hostHtml,
+  addLabel,
+}) {
+  return `
+    <div class="bst-list-editor">
+      <div class="bst-list-editor__head">
+        <div class="bst-list-editor__title">${escapeHtml(title)}</div>
+        ${hint ? `<p class="bst-list-editor__hint">${escapeHtml(hint)}</p>` : ''}
+      </div>
+      <div class="bst-allowlist-add">
+        ${inputHtml}
+        <button type="button" class="bst-settings__ghost bst-settings__ghost--compact" ${addAttr}>${escapeHtml(addLabel || t.allowlistAdd)}</button>
+      </div>
+      <div class="bst-list-editor__host" ${hostAttr}>${hostHtml}</div>
+    </div>
+  `;
+}
+
+function buildGeneralPanelHtml() {
+  const replaceHidden = settings.displayMode === 'replace' ? '' : ' hidden';
+  const autoHidden = settings.translateMode === 'auto' ? '' : ' hidden';
+  const allowHidden =
+    settings.translateMode === 'auto' && settings.autoScope === 'allowlist'
+      ? ''
+      : 'hidden';
+
+  const interfaceBody = fieldHtml(
+    t.settingsUiLocale,
+    `<select name="uiLocale">${localeOptions(settings.uiLocale)}</select>`
+  );
+
+  const translateBody = `
+    <div class="bst-grid bst-grid--2">
+      ${fieldHtml(
+        t.settingsTargetLang,
+        `<select name="targetLang">${langOptions(settings.targetLang)}</select>`
+      )}
+      ${fieldHtml(
+        t.settingsTranslateMode,
+        `<select name="translateMode">
+          <option value="button"${settings.translateMode !== 'auto' ? ' selected' : ''}>${escapeHtml(t.translateModeButton)}</option>
+          <option value="auto"${settings.translateMode === 'auto' ? ' selected' : ''}>${escapeHtml(t.translateModeAuto)}</option>
+        </select>`,
+        t.settingsTranslateModeHint
+      )}
+      ${fieldHtml(
+        t.settingsDisplayMode,
+        `<select name="displayMode">
+          <option value="panel"${settings.displayMode !== 'replace' ? ' selected' : ''}>${escapeHtml(t.displayModePanel)}</option>
+          <option value="replace"${settings.displayMode === 'replace' ? ' selected' : ''}>${escapeHtml(t.displayModeReplace)}</option>
+        </select>`,
+        t.settingsDisplayModeHint
+      )}
+      <div class="bst-replace-options" data-bst-replace-options${replaceHidden}>
+        ${fieldHtml(
+          t.settingsReplaceReveal,
+          `<select name="replaceReveal">
+            <option value="button"${settings.replaceReveal !== 'hover' && settings.replaceReveal !== 'split' ? ' selected' : ''}>${escapeHtml(t.replaceRevealButton)}</option>
+            <option value="hover"${settings.replaceReveal === 'hover' ? ' selected' : ''}>${escapeHtml(t.replaceRevealHover)}</option>
+            <option value="split"${settings.replaceReveal === 'split' ? ' selected' : ''}>${escapeHtml(t.replaceRevealSplit)}</option>
+          </select>`,
+          t.settingsReplaceRevealHint
+        )}
+      </div>
+    </div>
+    <div class="bst-auto-options" data-bst-auto-options${autoHidden}>
+      ${fieldHtml(
+        t.settingsAutoScope,
+        `<select name="autoScope">
+          <option value="all"${settings.autoScope !== 'allowlist' ? ' selected' : ''}>${escapeHtml(t.autoScopeAll)}</option>
+          <option value="allowlist"${settings.autoScope === 'allowlist' ? ' selected' : ''}>${escapeHtml(t.autoScopeAllowlist)}</option>
+        </select>`,
+        t.settingsAutoScopeHint
+      )}
+      <div class="bst-allowlist-panel" data-bst-allowlist-panel ${allowHidden}>
+        ${listEditorHtml({
+          title: t.autoScopeAllowlist,
+          hint: t.settingsAllowlistHint,
+          inputHtml: `<input name="allowlistInput" type="text" autocomplete="off" spellcheck="false" placeholder="${escapeAttr(t.allowlistPlaceholder)}" />`,
+          addAttr: 'data-bst-allowlist-add="1"',
+          hostAttr: 'data-bst-allowlist-host',
+          hostHtml: buildHandleListHtml(settings.autoAllowlist, 'allowlistEmpty'),
+        })}
+      </div>
+    </div>
+    <label class="bst-check bst-check--card">
+      <input name="autoDetectSkipSameLang" type="checkbox"${settings.autoDetectSkipSameLang ? ' checked' : ''} />
+      <span>${escapeHtml(t.settingsSkipSame)}</span>
+    </label>
+  `;
+
+  const accountsBody = listEditorHtml({
+    title: t.settingsAccountBlocklist,
+    hint: t.settingsAccountBlocklistHint,
+    inputHtml: `<input name="blocklistInput" type="text" autocomplete="off" spellcheck="false" placeholder="${escapeAttr(t.allowlistPlaceholder)}" />`,
+    addAttr: 'data-bst-blocklist-add="1"',
+    hostAttr: 'data-bst-blocklist-host',
+    hostHtml: buildHandleListHtml(settings.accountBlocklist, 'blocklistEmpty'),
+  });
+
+  const languagesBody = `
+    <div class="bst-grid bst-grid--2">
+      ${listEditorHtml({
+        title: t.settingsLangAllowlist,
+        hint: t.settingsLangAllowlistHint,
+        inputHtml: `<select name="langAllowInput">${langPickerOptions(settings.langAllowlist)}</select>`,
+        addAttr: 'data-bst-lang-allow-add="1"',
+        hostAttr: 'data-bst-lang-allow-host',
+        hostHtml: buildLangListHtml(settings.langAllowlist, 'langListEmpty'),
+        addLabel: t.langListAdd,
+      })}
+      ${listEditorHtml({
+        title: t.settingsLangBlocklist,
+        hint: t.settingsLangBlocklistHint,
+        inputHtml: `<select name="langBlockInput">${langPickerOptions(settings.langBlocklist)}</select>`,
+        addAttr: 'data-bst-lang-block-add="1"',
+        hostAttr: 'data-bst-lang-block-host',
+        hostHtml: buildLangListHtml(settings.langBlocklist, 'langListEmpty'),
+        addLabel: t.langListAdd,
+      })}
+    </div>
+  `;
+
+  return (
+    sectionHtml(t.settingsSectionInterface, interfaceBody) +
+    sectionHtml(t.settingsSectionTranslate, translateBody) +
+    sectionHtml(t.settingsSectionAccounts, accountsBody) +
+    sectionHtml(t.settingsSectionLanguages, languagesBody)
+  );
+}
+
 function langLabel(code) {
   const normalized = normalizeLangCode(code);
   const row = TARGET_LANGUAGES.find(
@@ -347,7 +509,7 @@ function langLabel(code) {
 function buildHandleListHtml(list, emptyKey) {
   const handles = Array.isArray(list) ? list : [];
   if (!handles.length) {
-    return `<p class="bst-hint bst-allowlist__empty">${escapeHtml(t[emptyKey] || t.allowlistEmpty)}</p>`;
+    return `<p class="bst-empty">${escapeHtml(t[emptyKey] || t.allowlistEmpty)}</p>`;
   }
   return `
     <ul class="bst-allowlist">
@@ -367,7 +529,7 @@ function buildHandleListHtml(list, emptyKey) {
 function buildLangListHtml(list, emptyKey) {
   const codes = Array.isArray(list) ? list : [];
   if (!codes.length) {
-    return `<p class="bst-hint bst-allowlist__empty">${escapeHtml(t[emptyKey] || t.langListEmpty)}</p>`;
+    return `<p class="bst-empty">${escapeHtml(t[emptyKey] || t.langListEmpty)}</p>`;
   }
   return `
     <ul class="bst-allowlist">
@@ -535,7 +697,7 @@ export function openSettings() {
   root.innerHTML = `
     <div class="bst-settings" role="dialog" aria-modal="true" aria-labelledby="bst-settings-title">
       <header class="bst-settings__header">
-        <div>
+        <div class="bst-settings__heading">
           <h2 id="bst-settings-title">${escapeHtml(t.settingsTitle)}</h2>
           <p class="bst-settings__ver">v${escapeHtml(SCRIPT_VERSION)}</p>
         </div>
@@ -547,169 +709,87 @@ export function openSettings() {
       <form class="bst-settings__form">
         <div class="bst-settings__body">
           <div ${panelAttrs('general', activeTab)}>
-            <label class="bst-field">
-              <span>${escapeHtml(t.settingsUiLocale)}</span>
-              <select name="uiLocale">${localeOptions(settings.uiLocale)}</select>
-            </label>
-            <label class="bst-field">
-              <span>${escapeHtml(t.settingsTranslateMode)}</span>
-              <select name="translateMode">
-                <option value="button"${settings.translateMode !== 'auto' ? ' selected' : ''}>${escapeHtml(t.translateModeButton)}</option>
-                <option value="auto"${settings.translateMode === 'auto' ? ' selected' : ''}>${escapeHtml(t.translateModeAuto)}</option>
-              </select>
-            </label>
-            <p class="bst-hint">${escapeHtml(t.settingsTranslateModeHint)}</p>
-            <label class="bst-field">
-              <span>${escapeHtml(t.settingsDisplayMode)}</span>
-              <select name="displayMode">
-                <option value="panel"${settings.displayMode !== 'replace' ? ' selected' : ''}>${escapeHtml(t.displayModePanel)}</option>
-                <option value="replace"${settings.displayMode === 'replace' ? ' selected' : ''}>${escapeHtml(t.displayModeReplace)}</option>
-              </select>
-            </label>
-            <p class="bst-hint">${escapeHtml(t.settingsDisplayModeHint)}</p>
-            <div class="bst-replace-options" data-bst-replace-options${settings.displayMode === 'replace' ? '' : ' hidden'}>
-              <label class="bst-field">
-                <span>${escapeHtml(t.settingsReplaceReveal)}</span>
-                <select name="replaceReveal">
-                  <option value="button"${settings.replaceReveal !== 'hover' && settings.replaceReveal !== 'split' ? ' selected' : ''}>${escapeHtml(t.replaceRevealButton)}</option>
-                  <option value="hover"${settings.replaceReveal === 'hover' ? ' selected' : ''}>${escapeHtml(t.replaceRevealHover)}</option>
-                  <option value="split"${settings.replaceReveal === 'split' ? ' selected' : ''}>${escapeHtml(t.replaceRevealSplit)}</option>
-                </select>
-              </label>
-              <p class="bst-hint">${escapeHtml(t.settingsReplaceRevealHint)}</p>
-            </div>
-            <div class="bst-auto-options" data-bst-auto-options${settings.translateMode === 'auto' ? '' : ' hidden'}>
-              <label class="bst-field">
-                <span>${escapeHtml(t.settingsAutoScope)}</span>
-                <select name="autoScope">
-                  <option value="all"${settings.autoScope !== 'allowlist' ? ' selected' : ''}>${escapeHtml(t.autoScopeAll)}</option>
-                  <option value="allowlist"${settings.autoScope === 'allowlist' ? ' selected' : ''}>${escapeHtml(t.autoScopeAllowlist)}</option>
-                </select>
-              </label>
-              <p class="bst-hint">${escapeHtml(t.settingsAutoScopeHint)}</p>
-              <div
-                class="bst-allowlist-panel"
-                data-bst-allowlist-panel
-                ${settings.translateMode === 'auto' && settings.autoScope === 'allowlist' ? '' : 'hidden'}
-              >
-                <div class="bst-allowlist-add">
-                  <input
-                    name="allowlistInput"
-                    type="text"
-                    autocomplete="off"
-                    spellcheck="false"
-                    placeholder="${escapeAttr(t.allowlistPlaceholder)}"
-                  />
-                  <button type="button" class="bst-settings__ghost" data-bst-allowlist-add="1">${escapeHtml(t.allowlistAdd)}</button>
-                </div>
-                <div data-bst-allowlist-host>${buildHandleListHtml(settings.autoAllowlist, 'allowlistEmpty')}</div>
-                <p class="bst-hint">${escapeHtml(t.settingsAllowlistHint)}</p>
-              </div>
-            </div>
-            <div class="bst-filter-block">
-              <label class="bst-field">
-                <span>${escapeHtml(t.settingsAccountBlocklist)}</span>
-              </label>
-              <p class="bst-hint">${escapeHtml(t.settingsAccountBlocklistHint)}</p>
-              <div class="bst-allowlist-add">
-                <input
-                  name="blocklistInput"
-                  type="text"
-                  autocomplete="off"
-                  spellcheck="false"
-                  placeholder="${escapeAttr(t.allowlistPlaceholder)}"
-                />
-                <button type="button" class="bst-settings__ghost" data-bst-blocklist-add="1">${escapeHtml(t.allowlistAdd)}</button>
-              </div>
-              <div data-bst-blocklist-host>${buildHandleListHtml(settings.accountBlocklist, 'blocklistEmpty')}</div>
-            </div>
-            <div class="bst-filter-block">
-              <label class="bst-field">
-                <span>${escapeHtml(t.settingsLangAllowlist)}</span>
-              </label>
-              <p class="bst-hint">${escapeHtml(t.settingsLangAllowlistHint)}</p>
-              <div class="bst-allowlist-add">
-                <select name="langAllowInput">${langPickerOptions(settings.langAllowlist)}</select>
-                <button type="button" class="bst-settings__ghost" data-bst-lang-allow-add="1">${escapeHtml(t.langListAdd)}</button>
-              </div>
-              <div data-bst-lang-allow-host>${buildLangListHtml(settings.langAllowlist, 'langListEmpty')}</div>
-            </div>
-            <div class="bst-filter-block">
-              <label class="bst-field">
-                <span>${escapeHtml(t.settingsLangBlocklist)}</span>
-              </label>
-              <p class="bst-hint">${escapeHtml(t.settingsLangBlocklistHint)}</p>
-              <div class="bst-allowlist-add">
-                <select name="langBlockInput">${langPickerOptions(settings.langBlocklist)}</select>
-                <button type="button" class="bst-settings__ghost" data-bst-lang-block-add="1">${escapeHtml(t.langListAdd)}</button>
-              </div>
-              <div data-bst-lang-block-host>${buildLangListHtml(settings.langBlocklist, 'langListEmpty')}</div>
-            </div>
-            <label class="bst-field">
-              <span>${escapeHtml(t.settingsTargetLang)}</span>
-              <select name="targetLang">${langOptions(settings.targetLang)}</select>
-            </label>
-            <label class="bst-check">
-              <input name="autoDetectSkipSameLang" type="checkbox"${settings.autoDetectSkipSameLang ? ' checked' : ''} />
-              <span>${escapeHtml(t.settingsSkipSame)}</span>
-            </label>
+            ${buildGeneralPanelHtml()}
           </div>
           <div ${panelAttrs('providers', activeTab)}>
-            <label class="bst-field">
-              <span>${escapeHtml(t.settingsProvider)}</span>
-              <select name="provider">${providerOptions(settings.provider)}</select>
-            </label>
-            <p class="bst-hint">${escapeHtml(t.settingsProviderHint)}</p>
-            <div class="bst-provider-panels" data-bst-provider-panels>
-              ${buildProviderFieldsHtml(settings.provider)}
-            </div>
+            ${sectionHtml(
+              t.settingsSectionProvider,
+              `
+                ${fieldHtml(
+                  t.settingsProvider,
+                  `<select name="provider">${providerOptions(settings.provider)}</select>`,
+                  t.settingsProviderHint
+                )}
+                <div class="bst-provider-panels" data-bst-provider-panels>
+                  ${buildProviderFieldsHtml(settings.provider)}
+                </div>
+              `
+            )}
           </div>
           <div ${panelAttrs('cache', activeTab)}>
-            ${buildCacheMeterHtml()}
-            <label class="bst-field">
-              <span>${escapeHtml(t.settingsCacheHours)}</span>
-              <input name="cacheHours" type="number" min="0" max="${CACHE_HOURS_MAX}" step="1" value="${escapeAttr(String(settings.cacheHours))}" />
-            </label>
-            <p class="bst-hint">${escapeHtml(t.settingsCacheHint)}</p>
-            <button type="button" class="bst-settings__ghost bst-settings__ghost--danger" data-bst-clear="1">${escapeHtml(t.settingsClearCache)}</button>
+            ${sectionHtml(
+              t.settingsSectionCache,
+              `
+                ${buildCacheMeterHtml()}
+                <div class="bst-grid bst-grid--2 bst-grid--cache">
+                  ${fieldHtml(
+                    t.settingsCacheHours,
+                    `<input name="cacheHours" type="number" min="0" max="${CACHE_HOURS_MAX}" step="1" value="${escapeAttr(String(settings.cacheHours))}" />`,
+                    t.settingsCacheHint
+                  )}
+                  <div class="bst-section__actions">
+                    <button type="button" class="bst-settings__ghost bst-settings__ghost--danger" data-bst-clear="1">${escapeHtml(t.settingsClearCache)}</button>
+                  </div>
+                </div>
+              `
+            )}
           </div>
           <div ${panelAttrs('debug', activeTab)}>
-            <label class="bst-check">
-              <input name="debugMode" type="checkbox"${settings.debugMode ? ' checked' : ''} />
-              <span>${escapeHtml(t.settingsDebug)}</span>
-            </label>
-            <p class="bst-hint">${escapeHtml(t.settingsDebugHint)}</p>
-            <div data-bst-stats-host>${buildStatsHtml()}</div>
+            ${sectionHtml(
+              t.settingsSectionDebug,
+              `
+                <label class="bst-check bst-check--card">
+                  <input name="debugMode" type="checkbox"${settings.debugMode ? ' checked' : ''} />
+                  <span>
+                    <strong class="bst-check__title">${escapeHtml(t.settingsDebug)}</strong>
+                    <span class="bst-check__hint">${escapeHtml(t.settingsDebugHint)}</span>
+                  </span>
+                </label>
+                <div data-bst-stats-host>${buildStatsHtml()}</div>
+              `
+            )}
           </div>
           <div ${panelAttrs('about', activeTab)}>
-            <p class="bst-about__desc">${escapeHtml(t.aboutDescription)}</p>
-            <a
-              class="bst-about__repo"
-              href="${escapeAttr(REPO_URL)}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >${escapeHtml(t.aboutRepo)}</a>
-            <div class="bst-about__author">
-              <img
-                class="bst-about__avatar"
-                src="${escapeAttr(AUTHOR_AVATAR_URL)}"
-                alt=""
-                width="56"
-                height="56"
-                decoding="async"
-              />
-              <div class="bst-about__meta">
-                <a
-                  class="bst-about__name"
-                  href="${escapeAttr(AUTHOR_URL)}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >${escapeHtml(AUTHOR_NAME)}</a>
-                <span class="bst-about__handle">@${escapeHtml(AUTHOR_HANDLE)}</span>
-                <a class="bst-about__email" href="mailto:${escapeAttr(AUTHOR_EMAIL)}">${escapeHtml(AUTHOR_EMAIL)}</a>
+            <div class="bst-about">
+              <p class="bst-about__desc">${escapeHtml(t.aboutDescription)}</p>
+              <a
+                class="bst-about__repo"
+                href="${escapeAttr(REPO_URL)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >${escapeHtml(t.aboutRepo)}</a>
+              <div class="bst-about__author">
+                <img
+                  class="bst-about__avatar"
+                  src="${escapeAttr(AUTHOR_AVATAR_URL)}"
+                  alt=""
+                  width="56"
+                  height="56"
+                  decoding="async"
+                />
+                <div class="bst-about__meta">
+                  <a
+                    class="bst-about__name"
+                    href="${escapeAttr(AUTHOR_URL)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >${escapeHtml(AUTHOR_NAME)}</a>
+                  <span class="bst-about__handle">@${escapeHtml(AUTHOR_HANDLE)}</span>
+                  <a class="bst-about__email" href="mailto:${escapeAttr(AUTHOR_EMAIL)}">${escapeHtml(AUTHOR_EMAIL)}</a>
+                </div>
               </div>
+              <p class="bst-about__foot">${escapeHtml(t.aboutLicense)} · v${escapeHtml(SCRIPT_VERSION)}</p>
             </div>
-            <p class="bst-hint">${escapeHtml(t.aboutLicense)} · v${escapeHtml(SCRIPT_VERSION)}</p>
           </div>
         </div>
         <div class="bst-settings__actions">

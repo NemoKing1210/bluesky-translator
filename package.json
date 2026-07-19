@@ -1,6 +1,6 @@
 {
   "name": "bluesky-translator",
-  "version": "0.1.24",
+  "version": "0.1.25",
   "private": true,
   "type": "module",
   "description": "Userscript that adds post translation on Bluesky (bsky.app)",
@@ -30,4 +30,3 @@
     "vite-plugin-monkey": "^5.0.0"
   }
 }
-
