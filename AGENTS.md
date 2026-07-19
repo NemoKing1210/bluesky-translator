@@ -27,10 +27,11 @@ bluesky-translator/
 │   ├── settings.js          # load/save settings
 │   ├── cache.js             # GM translation cache
 │   ├── gm.js                # GM_xmlhttpRequest wrapper
+│   ├── api/                 # translate router + provider clients
+│   ├── providers/           # Provider registry (fields / defaults)
 │   ├── i18n/                # TRANSLATIONS + locale helpers
 │   ├── utils/               # html, debounce
 │   ├── styles/              # CSS (injected via vite-plugin-monkey)
-│   ├── api/                 # translate.js (Google Translate endpoint)
 │   └── features/            # posts, SPA observer, settings UI, toasts
 ├── scripts/
 │   ├── copy-dist.mjs        # Copies dist → root after build
@@ -56,14 +57,16 @@ bluesky-translator/
 1. Match `https://bsky.app/*` at `document-idle`.
 2. Bootstrap styles, settings, DOM scan, `MutationObserver`, and SPA href hooks (`pushState` / `replaceState` / poll).
 3. Find post text via `POST_TEXT_SELECTORS` (prefer `[data-testid="postText"]`; also quoted embeds via `[aria-label^="Post by"] …`).
-4. Inject a **Translate** toolbar as a sibling after each text node; on click call Google Translate (`translate.googleapis.com`) via `GM_xmlhttpRequest`.
+4. Inject a **Translate** toolbar as a sibling after each text node (quote cards: after media); on click call the configured provider via `GM_xmlhttpRequest`.
 5. Show the translation in a result box; toggle hide/show on the same button.
-6. Cache successful translations in `GM_getValue` / `GM_setValue` (`bst_cache_v1`); settings in `bst_settings`.
-7. Settings via `GM_registerMenuCommand`; toasts for save / cache clear / version bump.
+6. Cache successful translations in `GM_getValue` / `GM_setValue` (`bst_cache_v1`); settings in `bst_settings` (including `provider` + `providerConfig`).
+7. Settings via sidebar **Translator** / `GM_registerMenuCommand`; toasts for save / cache clear / version bump.
 
 Keep rate limits polite: cache TTLs, request dedupe (`inflight`), debounce on DOM rescans.
 
 Bluesky’s web client DOM changes often — prefer `data-testid` selectors and keep fallbacks easy to adjust in `constants.js`.
+
+Translation providers live under `src/providers/registry.js` + `src/api/providers/*`. Add a provider there, wire it in `src/api/translate.js`, and declare any new hosts in `vite.config.js` `@connect`.
 
 ## Conventions
 

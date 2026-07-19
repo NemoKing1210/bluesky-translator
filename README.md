@@ -3,14 +3,14 @@
 [![CI](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml)
 [![Install userscript](https://img.shields.io/badge/⬇_Install-userscript-1083fe?style=for-the-badge)](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/bluesky-translator.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.10-green?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.1.11-green?style=for-the-badge)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=for-the-badge)](package.json)
 
 Userscript that adds **in-place translation** for posts on [Bluesky](https://bsky.app) — without leaving the feed.
 
 Compatible with [Tampermonkey](https://www.tampermonkey.net/), [Violentmonkey](https://violentmonkey.github.io/), [Greasemonkey](https://www.greasespot.net/), [ScriptCat](https://scriptcat.org/), and other managers that support the `// ==UserScript==` metadata block.
 
-> **Status:** early (`0.1.10`) — translate button, settings, cache, multi-language UI.
+> **Status:** early (`0.1.11`) — translate button, settings, cache, multi-language UI.
 > **Note:** Not affiliated with Bluesky Social PBC.
 
 ---
@@ -82,7 +82,8 @@ For hot reload during development, run `npm run dev` and install the Vite-served
 
 ### Settings & polish
 
-- Tabbed settings panel: **General · Translation · Cache · Debug · About**
+- Tabbed settings panel: **General · Providers · Translation · Cache · Debug · About**
+- Translation providers: Google (default, no key), DeepL, Microsoft, OpenAI, Yandex, LibreTranslate — fields depend on the selected provider
 - Entry points:
   - Left sidebar item **Translator** (next to Bluesky’s Settings)
   - Userscript manager menu command
@@ -92,7 +93,7 @@ For hot reload during development, run `npm run dev` and install the Vite-served
 
 ### Technical
 
-- No API keys required (uses Google Translate’s public endpoint via `GM_xmlhttpRequest`)
+- No API keys required for the default Google provider; DeepL / Microsoft / OpenAI / Yandex / LibreTranslate need credentials in **Settings → Providers**
 - Request dedupe + debounced DOM rescans
 - Built with [Vite](https://vitejs.dev/) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)
 - Same artifact / CI workflow as [backloggd-plus](https://github.com/NemoKing1210/backloggd-plus)
@@ -106,6 +107,7 @@ Open **Translator** in the left nav, or the manager menu → **Bluesky Translato
 | Tab | What you can change | Default |
 |-----|---------------------|---------|
 | **General** | Interface language; show Translate on posts | Auto / on |
+| **Providers** | Translation engine badge on tab; provider + API credentials / URL fields | Google |
 | **Translation** | Target language badge on tab; target language (flags + full names); skip if already target language | Auto / on |
 | **Cache** | Occupancy % badge on tab; usage meter; cache hours (`0` = off); clear cache | 24 |
 | **Debug** | Show cache hits in translation meta | off |
@@ -120,7 +122,7 @@ Saving closes the panel and applies immediately (nav labels and post buttons ref
 1. Matches `https://bsky.app/*` at `document-idle`.
 2. Finds post text via `[data-testid="postText"]` and quoted embeds (`[aria-label^="Post by"] …`) — adjustable in `src/constants.js` if Bluesky’s DOM changes.
 3. Injects a **Translate** toolbar as a sibling after each eligible text node.
-4. On click, requests `translate.googleapis.com` through the userscript sandbox (`@connect`).
+4. On click, requests the configured provider (Google by default) through the userscript sandbox (`@connect`).
 5. Stores successful results in `GM` storage (`bst_cache_v1`) until TTL expires or the script version changes.
 
 Bluesky’s web client updates often — if buttons stop appearing, selectors in `POST_TEXT_SELECTORS` are the first place to look.
@@ -176,7 +178,8 @@ bluesky-translator/
 │   ├── constants.js         # Keys, URLs, target languages, defaults
 │   ├── state.js / settings.js / cache.js / gm.js
 │   ├── i18n/                # UI strings (8 locales)
-│   ├── api/translate.js     # Google Translate client
+│   ├── api/                 # translate router + provider clients
+│   ├── providers/           # Provider registry (fields / defaults)
 │   ├── features/            # Posts, SPA, settings, toasts, nav button
 │   └── styles/              # Injected CSS
 ├── scripts/                 # copy-dist + CI artifact verify
@@ -192,10 +195,10 @@ bluesky-translator/
 ## FAQ
 
 **Does this need a Google API key?**  
-No. It uses the same public translate endpoint many userscripts rely on.
+No for the default **Google** provider. DeepL, Microsoft, OpenAI, Yandex, and LibreTranslate need credentials under **Settings → Providers**.
 
 **Will my Bluesky password be shared?**  
-No. The script only reads post text from the page DOM and sends that text to the translate host. It does not touch Bluesky auth tokens for translation.
+No. The script only reads post text from the page DOM and sends that text to the chosen translate provider. It does not touch Bluesky auth tokens for translation. API keys you enter are stored in userscript GM storage on your device.
 
 **Buttons missing on some posts?**  
 Empty posts (media-only) are skipped. If text posts also lack buttons after a Bluesky UI update, report an issue or adjust `POST_TEXT_SELECTORS`.

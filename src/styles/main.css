@@ -506,7 +506,10 @@ button.bst-nav-item svg {
 }
 
 .bst-field select,
-.bst-field input[type='number'] {
+.bst-field input[type='number'],
+.bst-field input[type='text'],
+.bst-field input[type='password'],
+.bst-field input[type='url'] {
   appearance: none;
   width: 100%;
   box-sizing: border-box;
@@ -520,15 +523,42 @@ button.bst-nav-item svg {
 }
 
 .bst-field select:hover,
-.bst-field input[type='number']:hover {
+.bst-field input[type='number']:hover,
+.bst-field input[type='text']:hover,
+.bst-field input[type='password']:hover,
+.bst-field input[type='url']:hover {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
 .bst-field select:focus,
-.bst-field input[type='number']:focus {
+.bst-field input[type='number']:focus,
+.bst-field input[type='text']:focus,
+.bst-field input[type='password']:focus,
+.bst-field input[type='url']:focus {
   outline: none;
   border-color: rgba(16, 131, 254, 0.55);
   box-shadow: 0 0 0 3px rgba(16, 131, 254, 0.16);
+}
+
+.bst-provider-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.bst-provider-fields {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 140, 170, 0.22);
+  background: rgba(120, 140, 170, 0.06);
+}
+
+.bst-provider-fields.is-active {
+  display: flex;
 }
 
 .bst-field select option {

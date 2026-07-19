@@ -1,6 +1,6 @@
 {
   "name": "bluesky-translator",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": true,
   "type": "module",
   "description": "Userscript that adds post translation on Bluesky (bsky.app)",

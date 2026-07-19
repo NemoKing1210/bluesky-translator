@@ -3,20 +3,26 @@ import {
   GM_setValue,
 } from '$';
 import { DEFAULT_SETTINGS, SETTINGS_KEY } from './constants.js';
+import { isKnownProvider, mergeProviderConfig } from './providers/registry.js';
+
+function normalizeSettings(raw) {
+  const base = raw && typeof raw === 'object' ? raw : {};
+  const merged = { ...DEFAULT_SETTINGS, ...base };
+  merged.provider = isKnownProvider(merged.provider) ? merged.provider : 'google';
+  merged.providerConfig = mergeProviderConfig(base.providerConfig);
+  return merged;
+}
 
 export function loadSettings() {
   try {
     const raw = GM_getValue(SETTINGS_KEY, null);
-    if (!raw || typeof raw !== 'object') {
-      return { ...DEFAULT_SETTINGS };
-    }
-    return { ...DEFAULT_SETTINGS, ...raw };
+    return normalizeSettings(raw);
   } catch (_) {
-    return { ...DEFAULT_SETTINGS };
+    return normalizeSettings(null);
   }
 }
 
 export function saveSettings(next) {
-  const merged = { ...DEFAULT_SETTINGS, ...next };
+  const merged = normalizeSettings(next);
   GM_setValue(SETTINGS_KEY, merged);
 }

@@ -284,7 +284,9 @@ async function runTranslate(postEl, btn) {
     if (settings.debugMode) {
       console.warn('[Bluesky Translator] translate failed', err);
     }
-    showResult(postEl, { error: t.errNetwork });
+    const msg =
+      err?.message === 'missing-config' ? t.errProviderConfig : t.errNetwork;
+    showResult(postEl, { error: msg });
     setButtonLabel(btn, t.btnTranslate);
     btn.dataset.bstState = '';
   }

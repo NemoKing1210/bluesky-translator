@@ -13,6 +13,7 @@ import {
   TARGET_LANGUAGES,
 } from '../constants.js';
 import { LOCALE_FLAG_AUTO, LOCALE_FLAGS, LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES } from '../i18n/index.js';
+import { getProvider, TRANSLATION_PROVIDERS } from '../providers/registry.js';
 import { saveSettings } from '../settings.js';
 import { reloadRuntimeSettings, settings, t } from '../state.js';
 import { escapeAttr, escapeHtml } from '../utils/html.js';
@@ -23,6 +24,7 @@ const ROOT_ID = 'bst-settings-root';
 
 const SETTINGS_TABS = [
   { id: 'general', labelKey: 'sectionGeneral' },
+  { id: 'providers', labelKey: 'sectionProviders' },
   { id: 'translation', labelKey: 'sectionTranslation' },
   { id: 'cache', labelKey: 'sectionCache' },
   { id: 'debug', labelKey: 'sectionDebug' },
@@ -160,7 +162,87 @@ function cacheBadgeLabel(stats) {
   return `${pct}%`;
 }
 
+function providerBadgeLabel(providerId) {
+  return getProvider(providerId || settings.provider).badge;
+}
+
+function providerOptions(selected) {
+  return TRANSLATION_PROVIDERS.map((p) => {
+    const on = p.id === selected;
+    return `<option value="${escapeAttr(p.id)}"${on ? ' selected' : ''}>${escapeHtml(p.name)}</option>`;
+  }).join('');
+}
+
+function providerFieldControl(providerId, field, value) {
+  const name = `provider.${providerId}.${field.key}`;
+  if (field.type === 'select') {
+    const opts = (field.options || [])
+      .map((opt) => {
+        const on = String(value ?? '') === String(opt.value);
+        const label = t[opt.labelKey] || opt.value;
+        return `<option value="${escapeAttr(opt.value)}"${on ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+      })
+      .join('');
+    return `<select name="${escapeAttr(name)}">${opts}</select>`;
+  }
+
+  const inputType =
+    field.type === 'password' ? 'password' : field.type === 'url' ? 'url' : 'text';
+  const autocomplete = field.type === 'password' ? 'off' : 'off';
+  return (
+    `<input name="${escapeAttr(name)}" type="${inputType}" autocomplete="${autocomplete}" ` +
+    `spellcheck="false" value="${escapeAttr(String(value ?? ''))}"` +
+    (field.placeholder ? ` placeholder="${escapeAttr(field.placeholder)}"` : '') +
+    ` />`
+  );
+}
+
+function buildProviderFieldsHtml(activeId) {
+  return TRANSLATION_PROVIDERS.map((provider) => {
+    const active = provider.id === activeId;
+    const cfg = settings.providerConfig?.[provider.id] || {};
+    const fields =
+      provider.fields.length === 0
+        ? `<p class="bst-hint">${escapeHtml(t[provider.hintKey] || '')}</p>`
+        : provider.fields
+            .map((field) => {
+              const hint = field.hintKey
+                ? `<p class="bst-hint">${escapeHtml(t[field.hintKey] || '')}</p>`
+                : '';
+              return `
+                <label class="bst-field">
+                  <span>${escapeHtml(t[field.labelKey] || field.key)}</span>
+                  ${providerFieldControl(provider.id, field, cfg[field.key])}
+                </label>
+                ${hint}
+              `;
+            })
+            .join('') +
+          `<p class="bst-hint">${escapeHtml(t[provider.hintKey] || '')}</p>`;
+
+    return `
+      <div
+        class="bst-provider-fields${active ? ' is-active' : ''}"
+        data-bst-provider-fields="${escapeAttr(provider.id)}"
+        ${active ? '' : 'hidden'}
+      >${fields}</div>
+    `;
+  }).join('');
+}
+
+function syncProviderFields(dialog, providerId) {
+  const id = providerId || 'google';
+  dialog.querySelectorAll('[data-bst-provider-fields]').forEach((block) => {
+    const on = block.getAttribute('data-bst-provider-fields') === id;
+    block.classList.toggle('is-active', on);
+    block.hidden = !on;
+  });
+}
+
 function tabBadgeHtml(id) {
+  if (id === 'providers') {
+    return `<span class="bst-settings__badge" data-bst-tab-badge="providers">${escapeHtml(providerBadgeLabel(settings.provider))}</span>`;
+  }
   if (id === 'translation') {
     return `<span class="bst-settings__badge" data-bst-tab-badge="translation">${escapeHtml(translationBadgeLabel(settings.targetLang))}</span>`;
   }
@@ -192,6 +274,11 @@ function buildTabsHtml(activeId) {
 }
 
 function syncTabBadges(dialog, draft = {}) {
+  const providerBadge = dialog.querySelector('[data-bst-tab-badge="providers"]');
+  if (providerBadge) {
+    providerBadge.textContent = providerBadgeLabel(draft.provider ?? settings.provider);
+  }
+
   const targetLang = draft.targetLang ?? settings.targetLang;
   const trBadge = dialog.querySelector('[data-bst-tab-badge="translation"]');
   if (trBadge) trBadge.textContent = translationBadgeLabel(targetLang);
@@ -248,8 +335,23 @@ function activateSettingsTab(dialog, tabId) {
 
 function readForm(form) {
   const cacheHours = Number(form.cacheHours.value);
+  const provider = form.provider?.value || 'google';
+  const providerConfig = { ...settings.providerConfig };
+
+  for (const p of TRANSLATION_PROVIDERS) {
+    const next = { ...(providerConfig[p.id] || {}) };
+    for (const field of p.fields) {
+      const el = form.querySelector(`[name="provider.${p.id}.${field.key}"]`);
+      if (!el) continue;
+      next[field.key] = String(el.value ?? '').trim();
+    }
+    providerConfig[p.id] = next;
+  }
+
   return {
     ...settings,
+    provider,
+    providerConfig,
     targetLang: form.targetLang.value || 'auto',
     uiLocale: form.uiLocale.value || 'auto',
     cacheHours:
@@ -297,6 +399,16 @@ export function openSettings() {
               <input name="showButtonOnPosts" type="checkbox"${settings.showButtonOnPosts ? ' checked' : ''} />
               <span>${escapeHtml(t.settingsShowButtons)}</span>
             </label>
+          </div>
+          <div ${panelAttrs('providers', activeTab)}>
+            <label class="bst-field">
+              <span>${escapeHtml(t.settingsProvider)}</span>
+              <select name="provider">${providerOptions(settings.provider)}</select>
+            </label>
+            <p class="bst-hint">${escapeHtml(t.settingsProviderHint)}</p>
+            <div class="bst-provider-panels" data-bst-provider-panels>
+              ${buildProviderFieldsHtml(settings.provider)}
+            </div>
           </div>
           <div ${panelAttrs('translation', activeTab)}>
             <label class="bst-field">
@@ -411,6 +523,7 @@ export function openSettings() {
     syncTabBadges(dialog, {
       cacheHours: Number(form.cacheHours?.value),
       targetLang: form.targetLang?.value,
+      provider: form.provider?.value,
     });
     showToast(t.settingsCacheCleared, { type: 'info' });
   });
@@ -425,12 +538,24 @@ export function openSettings() {
     syncTabBadges(dialog, {
       cacheHours: Number.isFinite(draft) ? draft : settings.cacheHours,
       targetLang: form.targetLang?.value,
+      provider: form.provider?.value,
     });
   });
 
   form.querySelector('select[name="targetLang"]')?.addEventListener('change', () => {
     syncTabBadges(dialog, {
       targetLang: form.targetLang.value,
+      cacheHours: Number(form.cacheHours?.value),
+      provider: form.provider?.value,
+    });
+  });
+
+  form.querySelector('select[name="provider"]')?.addEventListener('change', () => {
+    const provider = form.provider.value;
+    syncProviderFields(dialog, provider);
+    syncTabBadges(dialog, {
+      provider,
+      targetLang: form.targetLang?.value,
       cacheHours: Number(form.cacheHours?.value),
     });
   });

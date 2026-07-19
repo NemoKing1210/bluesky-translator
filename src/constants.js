@@ -1,4 +1,5 @@
 import pkg from '../package.json' with { type: 'json' };
+import { mergeProviderConfig } from './providers/registry.js';
 
 export const REPO_URL = 'https://github.com/NemoKing1210/bluesky-translator';
 export const AUTHOR_NAME = 'NemoKing';
@@ -93,4 +94,6 @@ export const DEFAULT_SETTINGS = {
   autoDetectSkipSameLang: true,
   showButtonOnPosts: true,
   debugMode: false,
+  provider: 'google',
+  providerConfig: mergeProviderConfig(null),
 };
