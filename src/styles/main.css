@@ -1,5 +1,15 @@
 /* Bluesky Translator — injected styles */
 
+/*
+ * Injected UI mounted on <body> (settings, toasts, peek badge) does not inherit
+ * Bluesky's font: bsky.app applies font-family per component, not on <body>, so
+ * without this it falls back to the browser default (Times New Roman).
+ */
+:root {
+  --bst-font: 'InterVariable', 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
 /* Theme tokens — Bluesky uses html.theme--light / theme--dark. */
 html.theme--light,
 html[data-bst-theme='light'] {
@@ -262,6 +272,7 @@ button.bst-nav-item svg {
   border: 1px solid rgba(16, 131, 254, 0.35);
   background: rgba(16, 131, 254, 0.14);
   color: #1083fe;
+  font-family: var(--bst-font);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -405,6 +416,7 @@ button.bst-nav-item svg {
   flex-direction: column;
   gap: 10px;
   width: min(360px, calc(100vw - 24px));
+  font-family: var(--bst-font);
   pointer-events: none;
 }
 
@@ -538,6 +550,7 @@ html:not(.theme--light) .bst-toast--error .bst-toast__icon {
   padding: 16px;
   background: var(--bst-settings-backdrop);
   backdrop-filter: blur(4px);
+  font-family: var(--bst-font);
   overscroll-behavior: none;
   touch-action: none;
 }

@@ -11,7 +11,7 @@ Built with [Vite](https://vitejs.dev/) + [vite-plugin-monkey](https://github.com
 - **Source:** `src/main.js`
 - **Canonical install artifacts (committed):** `bluesky-translator.user.js`, `bluesky-translator.meta.js` (also `@downloadURL` / `@updateURL`)
 - **Version source of truth:** `package.json` `version` (userscript header + `SCRIPT_VERSION`)
-- **Docs:** `README.md`, `CHANGELOG.md` (Keep a Changelog + SemVer)
+- **Docs:** `README.md` (+ translated `README.<locale>.md`), `DEVELOPMENT.md` (setup, architecture, layout, releases), `CONTRIBUTING.md`, `CHANGELOG.md` (Keep a Changelog + SemVer), `SECURITY.md`
 - **License:** MIT
 
 Edit source under `src/`, then run `npm run build` to refresh the root install files. Do not hand-edit the built `.user.js` / `.meta.js`.
@@ -41,16 +41,23 @@ bluesky-translator/
 │   ├── workflows/ci.yml     # Build + verify committed artifacts
 │   └── dependabot.yml
 ├── dist/                    # Vite output (gitignored)
+├── docs/screenshots/        # README preview images
 ├── bluesky-translator.user.js
 ├── bluesky-translator.meta.js
 ├── package.json
 ├── vite.config.js
 ├── README.md
+├── README.ru.md … README.ja.md # Translated READMEs (ru, zh, es, pt, de, fr, ja)
+├── DEVELOPMENT.md           # Local setup, architecture, layout, releases
+├── CONTRIBUTING.md          # Contribution guide
 ├── CHANGELOG.md
+├── SECURITY.md
 ├── LICENSE
 ├── AGENTS.md
 └── CLAUDE.md
 ```
+
+The README stays user-facing and lean; put developer setup, architecture, and repository details in `DEVELOPMENT.md` and contribution rules in `CONTRIBUTING.md`.
 
 ## Architecture (high level)
 
@@ -79,7 +86,7 @@ Translation providers live under `src/providers/registry.js` + `src/api/provider
 - After changing source or metadata, run `npm run build` so root `.user.js` / `.meta.js` stay in sync.
 - Production builds minify JS/CSS; edit `src/` for readable code, not the committed bundle.
 - **Always bump the script version** in `package.json` when shipping changes (features, fixes, UI, i18n, metadata). `version` is the single source of truth for `@version` and `SCRIPT_VERSION` — do not leave it unchanged across user-visible updates.
-- **Keep [`README.md`](README.md) in sync** with the product: when something is added, changed, removed, or renamed (features, settings tabs/options, install flow, supported managers, locales, target languages, architecture, FAQ), update the matching README sections the same change. Do not leave docs describing behavior that no longer exists.
+- **Keep [`README.md`](README.md) in sync** with the product: when something is added, changed, removed, or renamed (features, settings tabs/options, install flow, supported managers, locales, target languages, architecture, FAQ), update the matching README sections the same change. Do not leave docs describing behavior that no longer exists. Mirror user-visible README changes in the translated `README.<locale>.md` files (`ru`, `zh`, `es`, `pt`, `de`, `fr`, `ja`).
 
 ## Releases
 

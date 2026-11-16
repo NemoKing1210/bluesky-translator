@@ -1,42 +1,49 @@
 # Bluesky Translator
 
+**English** · [Русский](README.ru.md) · [中文](README.zh.md) · [Español](README.es.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [日本語](README.ja.md)
+
 [![CI](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml/badge.svg)](https://github.com/NemoKing1210/bluesky-translator/actions/workflows/ci.yml)
 [![Install userscript](https://img.shields.io/badge/⬇_Install-userscript-1083fe?style=for-the-badge)](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/bluesky-translator.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.1-green?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.2-green?style=for-the-badge)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=for-the-badge)](package.json)
 
 Userscript that adds **in-place translation** for posts on [Bluesky](https://bsky.app) — without leaving the feed.
 
 Compatible with [Tampermonkey](https://www.tampermonkey.net/), [Violentmonkey](https://violentmonkey.github.io/), [Greasemonkey](https://www.greasespot.net/), [ScriptCat](https://scriptcat.org/), and other managers that support the `// ==UserScript==` metadata block.
 
-> **Status:** stable (`1.0.1`) — translate posts in place, multiple providers, cache, filters, light/dark UI.
+> **Status:** stable (`1.0.2`) — translate posts in place, multiple providers, cache, filters, light/dark UI.
 > **Note:** Not affiliated with Bluesky Social PBC.
-
-<p align="center">
-  <img src="docs/screenshots/feed-translation-panel.png" alt="Bluesky post with Translate button and Russian translation panel" width="720" />
-</p>
-<p align="center"><sub>Translation panel under a post — original stays visible, links and hashtags remain clickable</sub></p>
-
-<p align="center">
-  <img src="docs/screenshots/settings-general.png" alt="Bluesky Translator settings — General tab" width="720" />
-</p>
-<p align="center"><sub>Settings → General: language, mode, display, account and language filters</sub></p>
 
 ---
 
 ## Table of contents
 
+- [Screenshots](#screenshots)
 - [Quick install](#quick-install)
 - [Features](#features)
 - [Settings](#settings)
 - [How it works](#how-it-works)
 - [Updates](#updates)
-- [Development](#development)
-- [Project layout](#project-layout)
 - [FAQ](#faq)
+- [Security](#security)
 - [Author](#author)
+- [More userscripts](#more-userscripts)
 - [License](#license)
+
+---
+
+## Screenshots
+
+The real userscript on a live Bluesky post and in the settings dialog.
+
+![Bluesky post with the Translate button and a Russian translation panel under the original text](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/docs/screenshots/feed-translation-panel.png)
+
+![Bluesky Translator settings dialog — General tab](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/docs/screenshots/settings-general.png)
+
+| | |
+|---|---|
+| ![Providers tab — provider picker and credentials](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/docs/screenshots/settings-providers.png)<br>**Providers** — choose Google, DeepL, Microsoft, OpenAI, Yandex or LibreTranslate; providers that need a key show their own fields | ![Cache tab — usage meter, TTL and clear cache](https://raw.githubusercontent.com/NemoKing1210/bluesky-translator/main/docs/screenshots/settings-cache.png)<br>**Cache** — usage meter, TTL and the clear-cache action |
 
 ---
 
@@ -109,7 +116,7 @@ For hot reload during development, run `npm run dev` and install the Vite-served
 - No API keys required for the default Google provider; DeepL / Microsoft / OpenAI / Yandex / LibreTranslate need credentials in **Settings → Providers**
 - Request dedupe + debounced DOM rescans
 - Built with [Vite](https://vitejs.dev/) + [vite-plugin-monkey](https://github.com/lisonge/vite-plugin-monkey)
-- Same artifact / CI workflow as [backloggd-plus](https://github.com/NemoKing1210/backloggd-plus)
+- Same artifact / CI workflow as [x-translator](https://github.com/NemoKing1210/x-translator) and [backloggd-plus](https://github.com/NemoKing1210/backloggd-plus)
 
 ---
 
@@ -153,53 +160,7 @@ The built script ships with `@updateURL` / `@downloadURL` pointing at GitHub `ma
 4. Update the version badge in this README if needed.
 5. Push to `main`.
 
----
-
-## Development
-
-**Requirements:** Node.js ≥ 20.
-
-```bash
-npm install
-npm run dev       # Vite serve — install the generated "dev:" userscript
-npm run build     # production → dist/ + copy to repo root
-npm run ci        # build + verify dist ↔ root artifacts
-```
-
-| Script | Purpose |
-|--------|---------|
-| `npm run dev` | Local HMR userscript for Tampermonkey / Violentmonkey |
-| `npm run build` | Minified production bundle + copy to root |
-| `npm run verify:artifacts` | Ensure `dist/` matches committed root files |
-| `npm run ci` | `build` + `verify:artifacts` (same as GitHub Actions) |
-
-Edit files under `src/` only — never hand-edit the committed `.user.js` / `.meta.js`.
-
-Agent-oriented conventions live in [`AGENTS.md`](AGENTS.md).
-
----
-
-## Project layout
-
-```text
-bluesky-translator/
-├── src/
-│   ├── main.js              # Bootstrap
-│   ├── constants.js         # Keys, URLs, target languages, defaults
-│   ├── state.js / settings.js / cache.js / gm.js
-│   ├── i18n/                # UI strings (8 locales)
-│   ├── api/                 # translate router + provider clients
-│   ├── providers/           # Provider registry (fields / defaults)
-│   ├── features/            # Posts, SPA, settings, toasts, nav button
-│   └── styles/              # Injected CSS
-├── docs/screenshots/        # README preview images
-├── scripts/                 # copy-dist + CI artifact verify
-├── .github/workflows/ci.yml
-├── bluesky-translator.user.js   # Installable build (committed)
-├── bluesky-translator.meta.js
-├── package.json             # version source of truth
-└── vite.config.js           # userscript metadata
-```
+For local setup, contributing, and repository layout see [`DEVELOPMENT.md`](DEVELOPMENT.md), [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`AGENTS.md`](AGENTS.md).
 
 ---
 
@@ -222,6 +183,12 @@ Use the latest build (`0.1.2+`) — native `<select>` options use `color-scheme:
 
 ---
 
+## Security
+
+Found a vulnerability? Please report it privately — see [`SECURITY.md`](SECURITY.md). Do not open a public issue for security problems.
+
+Short version of the model: post text goes only to the selected translation provider, API keys and cached translations stay in userscript storage on your device (unencrypted), and the script never reads Bluesky cookies or auth tokens. Custom provider endpoints are user-supplied, so only use hosts you trust.
+
 ## Author
 
 | | |
@@ -231,6 +198,16 @@ Use the latest build (`0.1.2+`) — native `<select>` options use `color-scheme:
 | Repo | [github.com/NemoKing1210/bluesky-translator](https://github.com/NemoKing1210/bluesky-translator) |
 
 Issues and ideas: [GitHub Issues](https://github.com/NemoKing1210/bluesky-translator/issues).
+
+---
+
+## More userscripts
+
+Other userscripts by the same author:
+
+| Userscript | What it does |
+|:-----------|:-------------|
+| [![X Translator](https://img.shields.io/badge/X_Translator-1d9bf0?style=flat-square&logo=x&logoColor=white)](https://github.com/NemoKing1210/x-translator) | **In-place translation** for posts and replies on [X](https://x.com) (Twitter) — same provider, cache, and filter approach as this script |
 
 ---
 

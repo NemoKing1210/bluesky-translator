@@ -3,3 +3,7 @@ dist/
 *.local
 .DS_Store
 Thumbs.db
+
+# Local superpowers working artifacts (specs, plans)
+docs/superpowers/
+superpowers/

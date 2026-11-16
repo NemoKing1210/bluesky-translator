@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-11-16
+
+### Added
+
+- `SECURITY.md` and a Security section in the README
+- README translations for ru, zh, es, pt, de, fr, ja
+- Dedicated Screenshots section with post, General, Providers, and Cache tabs, plus a More userscripts section in every README
+- `DEVELOPMENT.md` (setup, architecture, repository layout, releases) and `CONTRIBUTING.md`
+
+### Changed
+
+- README is now user-facing and lean; development and architecture details moved to `DEVELOPMENT.md`
+
+### Fixed
+
+- Settings, toasts, and the hover-peek language badge now pin an explicit font stack instead of falling back to the browser default serif
+
 ## [1.0.1] - 2026-07-19
 
 ### Changed
